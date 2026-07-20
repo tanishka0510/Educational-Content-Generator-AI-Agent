@@ -1,10 +1,7 @@
-.venv/
+knowledge_base/
+chroma_db/
+uploads/
 __pycache__/
 *.pyc
-
-uploads/*
-!uploads/.gitkeep
-
-chroma_db/
-
 .env
+.venv/
