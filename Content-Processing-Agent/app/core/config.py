@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     SUPPORTED_DOCUMENT_TYPES: tuple[str, ...] = (
         ".pdf",
         ".docx",
+        ".pptx",
         ".txt",
         ".md",
     )

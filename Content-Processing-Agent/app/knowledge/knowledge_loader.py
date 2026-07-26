@@ -7,13 +7,21 @@ from langchain_community.document_loaders import (
     UnstructuredPowerPointLoader,
     UnstructuredMarkdownLoader,
 )
+from app.services.metadata_service import MetadataService
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-KNOWLEDGE_PATH = BASE_DIR / "knowledge_base"
-print(KNOWLEDGE_PATH)
-print(KNOWLEDGE_PATH.exists())
+# ==========================================================
+# Load Documents From One Subject Folder
+# ==========================================================
 
-def load_documents():
+def load_documents(subject_folder: Path):
+
+    if not subject_folder.exists():
+        raise FileNotFoundError(
+            f"Subject folder not found: {subject_folder}"
+        )
+
+    print(f"\nLoading Subject : {subject_folder.name}")
+    print(f"Folder          : {subject_folder}")
 
     documents = []
 
@@ -27,7 +35,7 @@ def load_documents():
 
     for pattern in supported_files:
 
-        for file in KNOWLEDGE_PATH.rglob(pattern):
+        for file in subject_folder.rglob(pattern):
 
             try:
 
@@ -45,7 +53,10 @@ def load_documents():
                     loader = UnstructuredPowerPointLoader(str(file))
 
                 elif suffix == ".txt":
-                    loader = TextLoader(str(file), encoding="utf-8")
+                    loader = TextLoader(
+                        str(file),
+                        encoding="utf-8"
+                    )
 
                 elif suffix == ".md":
                     loader = UnstructuredMarkdownLoader(str(file))
@@ -53,7 +64,28 @@ def load_documents():
                 else:
                     continue
 
-                documents.extend(loader.load())
+                loaded_docs = loader.load()
+
+                # ---------- IMPORTANT ----------
+                for doc in loaded_docs:
+                    page = doc.metadata.get("page", 0)
+
+                    unit = MetadataService.detect_unit(
+                      doc.page_content
+                    )
+                    topic = MetadataService.detect_topic(
+                      doc.page_content
+                    )
+                    doc.metadata = {
+                      "subject": subject_folder.name,
+                      "source": str(file),
+                      "filename": file.name,
+                      "page": int(page),
+                      "unit": unit,
+                      "topic": topic
+                    }
+
+                documents.extend(loaded_docs)
 
             except Exception as e:
 

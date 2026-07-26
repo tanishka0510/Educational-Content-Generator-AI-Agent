@@ -5,7 +5,7 @@ Stores document chunks inside ChromaDB.
 """
 
 from app.models.document import Document
-from app.database.chroma_client import ChromaClient
+from app.database.uploaded_chroma_client import UploadedChromaClient
 
 
 class ChromaService:
@@ -19,7 +19,7 @@ class ChromaService:
         Store all document chunks in ChromaDB.
         """
 
-        collection = ChromaClient.get_collection()
+        collection = UploadedChromaClient.get_collection()
 
         for chunk in document.chunks:
 
@@ -40,7 +40,6 @@ class ChromaService:
                 metadatas=[
 
                     {
-
                         "document_id": document.document_id,
 
                         "filename": document.filename,
@@ -50,11 +49,12 @@ class ChromaService:
                         "language": document.language,
 
                         "chunk_index": chunk.chunk_index
-
                     }
-
                 ]
-
             )
-
+            print("\n========== UPLOADED DATABASE ==========")
+            print("Collection :", collection.name)
+            print("Total Documents :", collection.count())
+            print("=======================================\n")
         return document
+    

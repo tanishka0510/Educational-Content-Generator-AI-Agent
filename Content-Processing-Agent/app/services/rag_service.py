@@ -2,86 +2,173 @@ from app.services.hybrid_retriever import hybrid_search
 from app.services.llm_service import generate_answer, process_content
 
 
-def ask_question(question: str):
-    """
-    Simple RAG QA using Hybrid Retrieval
-    """
+# ==========================================================
+# Question Answering
+# ==========================================================
 
-    data = hybrid_search(question)
+def ask_question(subject: str, question: str):
+
+    data = hybrid_search(subject, question)
 
     docs = data["documents"]
-    videos = data["videos"]
+    score = data["score"]
 
-    # No documents retrieved
-    if not docs:
-        return {
+    videos = data["videos"]
+    khan = data["khan"]
+    nptel = data["nptel"]
+
+    used_external = data["used_external"]
+
+    # --------------------------------------------------
+    # No Local Knowledge
+    # --------------------------------------------------
+
+    if len(docs) == 0:
+
+        response = {
             "question": question,
-            "answer": "The uploaded knowledge base does not contain enough information.",
+            "answer": (
+                "The uploaded knowledge base does not contain enough "
+                "information to answer this question."
+            ),
             "sources": [],
-            "videos": videos
+            "retrieval_score": score,
         }
 
-    context = "\n\n".join(doc.page_content for doc in docs)
+        if used_external:
+            response["videos"] = videos
+            response["khan"] = khan
+            response["nptel"] = nptel
 
-    answer = generate_answer(context, question)
+        return response
 
-    return {
+    # --------------------------------------------------
+    # Build Context
+    # --------------------------------------------------
+
+    context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+    # --------------------------------------------------
+    # Generate Answer
+    # --------------------------------------------------
+
+    answer = generate_answer(
+        context=context,
+        question=question
+    )
+
+    # --------------------------------------------------
+    # Sources
+    # --------------------------------------------------
+
+    sources = list(
+        dict.fromkeys(
+            doc.metadata.get("source", "")
+            for doc in docs
+        )
+    )
+
+    # --------------------------------------------------
+    # Response
+    # --------------------------------------------------
+
+    response = {
         "question": question,
         "answer": answer,
-        "sources": list(
-            dict.fromkeys(
-                doc.metadata.get("source", "")
-                for doc in docs
-            )
-        ),
-        "videos": videos
+        "sources": sources,
+        "retrieval_score": score,
     }
 
+    # --------------------------------------------------
+    # Attach external resources ONLY if used
+    # --------------------------------------------------
 
-def process_question(question: str):
-    """
-    Content Processing Endpoint using Hybrid Retrieval
-    """
+    if used_external:
 
-    data = hybrid_search(question)
+        if videos:
+            response["videos"] = videos
+
+        if khan:
+            response["khan"] = khan
+
+        if nptel:
+            response["nptel"] = nptel
+
+    return response
+
+
+# ==========================================================
+# Educational Content Processing
+# ==========================================================
+
+def process_question(subject: str, question: str):
+
+    data = hybrid_search(subject, question)
 
     docs = data["documents"]
+    score = data["score"]
+
     videos = data["videos"]
+    khan = data["khan"]
+    nptel = data["nptel"]
 
-    # Nothing retrieved
-    if not docs:
-        return {
-            "summary": "The uploaded knowledge base does not contain enough information.",
+    used_external = data["used_external"]
+
+    # --------------------------------------------------
+    # No Local Knowledge
+    # --------------------------------------------------
+
+    if len(docs) == 0:
+
+        response = {
+            "summary": (
+                "No relevant information was found in the selected subject."
+            ),
             "learning_objectives": [],
             "keywords": [],
             "concepts": [],
             "difficulty": "Unknown",
             "sources": [],
-            "videos": videos
+            "retrieval_score": score,
         }
 
-    context = "\n\n".join(doc.page_content for doc in docs)
+        if used_external:
 
-    # ---------- IMPORTANT FILTER ----------
-    # Reject clearly unrelated retrievals
-    question_words = set(question.lower().split())
-    context_words = set(context.lower().split())
+            if videos:
+                response["videos"] = videos
 
-    overlap = question_words.intersection(context_words)
+            if khan:
+                response["khan"] = khan
 
-    if len(overlap) == 0:
-        return {
-            "summary": "The uploaded knowledge base does not contain enough information.",
-            "learning_objectives": [],
-            "keywords": [],
-            "concepts": [],
-            "difficulty": "Unknown",
-            "sources": [],
-            "videos": videos
-        }
-    # --------------------------------------
+            if nptel:
+                response["nptel"] = nptel
 
-    result = process_content(context, question)
+        return response
+
+    # --------------------------------------------------
+    # Build Context
+    # --------------------------------------------------
+
+    context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+    # --------------------------------------------------
+    # Generate Educational Content
+    # --------------------------------------------------
+
+    result = process_content(
+        context=context,
+        question=question
+    )
+
+    # --------------------------------------------------
+    # Sources
+    # --------------------------------------------------
 
     result["sources"] = list(
         dict.fromkeys(
@@ -90,6 +177,21 @@ def process_question(question: str):
         )
     )
 
-    result["videos"] = videos
+    result["retrieval_score"] = score
+
+    # --------------------------------------------------
+    # Attach external resources ONLY if used
+    # --------------------------------------------------
+
+    if used_external:
+
+        if videos:
+            result["videos"] = videos
+
+        if khan:
+            result["khan"] = khan
+
+        if nptel:
+            result["nptel"] = nptel
 
     return result

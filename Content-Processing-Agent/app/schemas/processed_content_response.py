@@ -1,6 +1,34 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
+
+# ==========================================================
+# YouTube Response
+# ==========================================================
+
+class VideoResponse(BaseModel):
+    title: str
+    channel: str
+    description: str
+    url: str
+    thumbnail: str
+    published_at: str
+
+
+# ==========================================================
+# External Educational Resource
+# ==========================================================
+
+class ResourceResponse(BaseModel):
+    title: str
+    description: str
+    url: str
+    provider: str
+
+
+# ==========================================================
+# Processed Content Response
+# ==========================================================
 
 class ProcessedContentResponse(BaseModel):
     summary: str
@@ -9,3 +37,9 @@ class ProcessedContentResponse(BaseModel):
     concepts: List[str]
     difficulty: str
     sources: List[str]
+
+    retrieval_score: Optional[float] = None
+
+    videos: Optional[List[VideoResponse]] = None
+    khan: Optional[List[ResourceResponse]] = None
+    nptel: Optional[List[ResourceResponse]] = None

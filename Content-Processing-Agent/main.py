@@ -6,6 +6,7 @@ and registers all API routes.
 """
 
 from fastapi import FastAPI
+from fastapi import HTTPException
 from app.api.upload import router as upload_router
 from app.core.config import settings
 from app.api.search import router as search_router
@@ -55,14 +56,40 @@ async def health_check():
         "debug": settings.DEBUG,
     }
     
-@app.post("/ask", response_model=QueryResponse)
+@app.post(
+    "/ask",
+    response_model=QueryResponse,
+    response_model_exclude_none=True,
+)
 def ask(request: QueryRequest):
 
-    result = ask_question(request.question)
+    try:
+        return ask_question(
+            request.subject,
+            request.question,
+        )
 
-    return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
 
-@app.post("/process-content", response_model=ProcessedContentResponse)
+@app.post(
+    "/process-content",
+    response_model=ProcessedContentResponse,
+    response_model_exclude_none=True,
+)
 def process(request: QueryRequest):
 
-    return process_question(request.question)
+    try:
+        return process_question(
+            request.subject,
+            request.question,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )

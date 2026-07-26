@@ -1,7 +1,27 @@
-knowledge_base/
-chroma_db/
-uploads/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+
+# Environment Variables
 .env
-.venv/
+
+# Uploaded Files
+uploads/
+
+# Uploaded Chroma Database
+uploaded_db/
+chroma_db/
+# IDE
+.vscode/
+.idea/
+
+# OS Files
+Thumbs.db
+.DS_Store
+
+knowledge_base/

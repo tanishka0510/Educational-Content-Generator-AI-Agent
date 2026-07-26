@@ -5,12 +5,12 @@ from googleapiclient.discovery import build
 
 load_dotenv()
 
-API_KEY = os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_API_KEY= os.getenv("YOUTUBE_API_KEY")
 
 youtube = build(
     "youtube",
     "v3",
-    developerKey=API_KEY
+    developerKey=YOUTUBE_API_KEY 
 )
 
 
@@ -19,7 +19,10 @@ def search_youtube(query: str, max_results: int = 5):
     Search educational YouTube videos.
     """
 
-    query = f"{query} tutorial"
+    education_keywords = ["what","how","why","explain","define","algorithm","stack","queue","tree","graph","python","java","c++","database","sql",]
+
+    if any(word in query.lower() for word in education_keywords):
+        query = f"{query} tutorial"
 
     request = youtube.search().list(
         part="snippet",
@@ -30,7 +33,11 @@ def search_youtube(query: str, max_results: int = 5):
         videoDuration="medium"
     )
 
-    response = request.execute()
+    try:
+        response = request.execute()
+    except Exception as e:
+        print("YouTube API Error:", e)
+        return []
 
     videos = []
 

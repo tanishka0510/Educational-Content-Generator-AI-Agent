@@ -1,0 +1,131 @@
+"""
+Uploaded Knowledge Service
+
+Creates and searches temporary Chroma databases
+for uploaded files.
+"""
+
+from pathlib import Path
+import uuid
+
+from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+
+# ==========================================================
+# Embedding Model
+# ==========================================================
+
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+
+# ==========================================================
+# Uploaded DB Root
+# ==========================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+UPLOADED_DB_ROOT = BASE_DIR / "uploaded_db"
+
+UPLOADED_DB_ROOT.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+print("Uploaded DB Root :", UPLOADED_DB_ROOT.resolve())
+
+
+# ==========================================================
+# Create Upload Database
+# ==========================================================
+
+def create_upload_database(chunks):
+    """
+    Creates a brand-new Chroma database
+    for one uploaded document.
+
+    Returns:
+        upload_id
+    """
+
+    upload_id = str(uuid.uuid4())
+
+    db_path = UPLOADED_DB_ROOT / upload_id
+
+    vectordb = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=str(db_path)
+    )
+
+    print("\n===============================")
+    print("Created Upload Database")
+    print("Upload ID :", upload_id)
+    print("Documents :", vectordb._collection.count())
+    print("===============================\n")
+
+    return upload_id
+
+
+# ==========================================================
+# Load Upload Database
+# ==========================================================
+
+def load_upload_database(upload_id: str):
+
+    db_path = UPLOADED_DB_ROOT / upload_id
+
+    if not db_path.exists():
+        raise FileNotFoundError(
+            f"Upload database '{upload_id}' not found."
+        )
+
+    vectordb = Chroma(
+        persist_directory=str(db_path),
+        embedding_function=embeddings
+    )
+
+    return vectordb
+
+
+# ==========================================================
+# Search Uploaded Database
+# ==========================================================
+
+def search_uploaded_knowledge(
+    upload_id: str,
+    query: str,
+    k: int = 5
+):
+
+    vectordb = load_upload_database(upload_id)
+
+    results = vectordb.similarity_search_with_score(
+        query=query,
+        k=k
+    )
+
+    docs = []
+
+    best_score = None
+
+    print("\n========== UPLOADED SEARCH ==========\n")
+
+    for i, (doc, score) in enumerate(results, start=1):
+
+        print(f"Result {i}")
+        print("Source   :", doc.metadata.get("source"))
+        print("Page     :", doc.metadata.get("page"))
+        print("Distance :", round(score, 4))
+        print("-" * 60)
+
+        docs.append(doc)
+
+        if best_score is None or score < best_score:
+            best_score = score
+
+    print(f"\nRetrieved Documents : {len(docs)}")
+    print("Best Score :", best_score)
+    print("=====================================\n")
+
+    return docs, best_score

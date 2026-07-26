@@ -1,51 +1,118 @@
 from pathlib import Path
+import shutil
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 
-from knowledge_loader import load_documents
+from app.knowledge.knowledge_loader import load_documents
 
+
+# ==========================================================
+# Paths
+# ==========================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-CHROMA_PATH = str(BASE_DIR / "chroma_db")
-print("CHROMA PATH =", CHROMA_PATH)
 
-def build_vector_database():
+KNOWLEDGE_PATH = BASE_DIR / "knowledge_base"
 
-    print("Loading documents...")
-    docs = load_documents()
+CHROMA_ROOT = BASE_DIR / "chroma_db"
 
-    print(f"Loaded {len(docs)} documents")
+print("Knowledge Base :", KNOWLEDGE_PATH)
+print("Chroma Root    :", CHROMA_ROOT)
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
+# ==========================================================
+# Embedding Model
+# ==========================================================
 
-    print("Splitting documents...")
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+
+# ==========================================================
+# Text Splitter
+# ==========================================================
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200
+)
+
+
+# ==========================================================
+# Build Subject Database
+# ==========================================================
+
+def build_subject_database(subject_folder: Path):
+
+    subject_name = subject_folder.name
+
+    print("\n" + "=" * 70)
+    print(f"INDEXING SUBJECT : {subject_name}")
+    print("=" * 70)
+
+    docs = load_documents(subject_folder)
+
+    print(f"Loaded Documents : {len(docs)}")
+
+    if len(docs) == 0:
+        print("No documents found.")
+        return
 
     chunks = splitter.split_documents(docs)
 
-    print(f"Created {len(chunks)} chunks")
+    print(f"Created Chunks : {len(chunks)}")
 
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    subject_db = CHROMA_ROOT / subject_name
+
+    if subject_db.exists():
+        print("Removing old database...")
+        shutil.rmtree(subject_db)
 
     vectordb = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
-        persist_directory=CHROMA_PATH
+        persist_directory=str(subject_db)
     )
 
-    print("\nKnowledge Base Indexed Successfully.")
-    print(f"Database stored at : {CHROMA_PATH}")
-    print("Collection Count:", vectordb._collection.count())
+    print(f"Database Saved : {subject_db}")
+    print(f"Collection Count : {vectordb._collection.count()}")
 
+
+# ==========================================================
+# Build All Databases
+# ==========================================================
+
+def build_vector_database():
+
+    if not KNOWLEDGE_PATH.exists():
+        print("Knowledge Base folder not found.")
+        return
+
+    CHROMA_ROOT.mkdir(exist_ok=True)
+
+    subject_folders = [
+        folder
+        for folder in KNOWLEDGE_PATH.iterdir()
+        if folder.is_dir()
+    ]
+
+    print(f"\nFound {len(subject_folders)} subjects.\n")
+
+    for folder in subject_folders:
+        build_subject_database(folder)
+
+    print("\n" + "=" * 70)
+    print("ALL SUBJECT DATABASES CREATED SUCCESSFULLY")
+    print("=" * 70)
+
+
+# ==========================================================
+# Run
+# ==========================================================
 
 if __name__ == "__main__":
     build_vector_database()
