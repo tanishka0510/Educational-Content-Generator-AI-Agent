@@ -61,6 +61,30 @@ class AudioSummaryRequest(BaseModel):
         description="Educational content to summarize and convert to audio."
     )
 
+class OCRRequest(BaseModel):
+    """
+    Request for extracting text from an image.
+    """
+
+    image_path: str = Field(
+        ...,
+        description="Path to the image for OCR processing."
+    )
+
+class MultimediaPipelineRequest(BaseModel):
+    """
+    Request for generating complete multimedia educational content.
+    """
+
+    text: str = Field(
+        ...,
+        description="Educational content to process."
+    )
+
+    generate_summary: bool = True
+    generate_audio: bool = True
+    generate_image: bool = False
+
 
 class MultimediaRequest(BaseModel):
     """
@@ -75,3 +99,11 @@ class MultimediaRequest(BaseModel):
     context: Optional[str] = None
 
     audio_path: Optional[str] = None
+
+    image_path: Optional[str] = None
+
+    generate_summary: Optional[bool] = None
+
+    generate_audio: Optional[bool] = None
+
+    generate_image: Optional[bool] = None
