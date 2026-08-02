@@ -11,6 +11,7 @@ from backend.models.request import (
     TextToSpeechRequest,
     SpeechToTextRequest,
     VoiceQuestionRequest,
+    MultimediaPipelineRequest,
 )
 
 from backend.models.response import (
@@ -18,6 +19,7 @@ from backend.models.response import (
     AudioResponse,
     TranscriptResponse,
     QuestionAnswerResponse,
+    MultimediaPipelineResponse,
 )
 
 from backend.services.summary_service import SummaryService
@@ -198,6 +200,62 @@ def generate_video(topic: str):
 
     except Exception as e:
 
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+# ==================================================
+# ADD THE NEW /process ENDPOINT HERE
+# ==================================================
+
+@router.post(
+    "/process",
+    response_model=MultimediaPipelineResponse
+)
+def process_multimedia(request: MultimediaPipelineRequest):
+
+    try:
+
+        summary = None
+        audio_path = None
+        image_path = None
+
+        # Generate Summary
+        if request.generate_summary:
+            summary = summary_service.generate_summary(
+                request.text
+            )
+
+        # Generate Audio
+        if request.generate_audio:
+
+            text_for_audio = summary if summary else request.text
+
+            audio_result = tts_service.text_to_speech(
+                text_for_audio
+            )
+
+            audio_path = audio_result["audio_path"]
+
+        # Generate Educational Image
+        if request.generate_image:
+
+            image_result = image_service.generate_image(
+                request.text
+            )
+
+            # Adjust this key according to image_service.py
+            image_path = image_result.get("image_path")
+
+        return MultimediaPipelineResponse(
+            success=True,
+            summary=summary,
+            audio_path=audio_path,
+            image_path=image_path
+        )
+
+    except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=str(e)

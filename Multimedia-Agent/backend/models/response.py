@@ -77,7 +77,29 @@ class AudioSummaryResponse(BaseModel):
         ...,
         description="Generated audio file path."
     )
+class MultimediaPipelineResponse(BaseModel):
+    """
+    Response returned after multimedia pipeline processing.
+    """
 
+    success: bool = True
+
+    summary: Optional[str] = None
+
+    audio_path: Optional[str] = None
+
+    image_path: Optional[str] = None
+
+    
+class OCRRequest(BaseModel):
+    """
+    Request for OCR text extraction.
+    """
+
+    image_path: str = Field(
+        ...,
+        description="Path to the image for OCR processing."
+    )
 
 class ErrorResponse(BaseModel):
     """
