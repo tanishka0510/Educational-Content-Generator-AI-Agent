@@ -94,6 +94,7 @@ class ProcessingService:
         # Step 6 : Store in ChromaDB
         # --------------------------------------------
 
+        # Uploaded documents are stored separately
         document = ChromaService.store(document)
         
         # --------------------------------------------

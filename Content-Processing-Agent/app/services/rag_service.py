@@ -46,6 +46,13 @@ def ask_question(subject: str, question: str):
     # Build Context
     # --------------------------------------------------
 
+    print("\n========== DOCS PASSED TO LLM ==========\n")
+
+    for i, doc in enumerate(docs, start=1):
+        print(f"Document {i}")
+        print(doc.page_content[:300])
+        print("-" * 60)
+    
     context = "\n\n".join(
         doc.page_content
         for doc in docs
@@ -57,8 +64,12 @@ def ask_question(subject: str, question: str):
 
     answer = generate_answer(
         context=context,
-        question=question
+        question=question,
+        source=data["source"],
     )
+    print("\n========== CONTEXT SENT TO GEMINI ==========\n")
+    print(context)
+    print("\n============================================\n")
 
     # --------------------------------------------------
     # Sources

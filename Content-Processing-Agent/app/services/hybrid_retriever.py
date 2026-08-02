@@ -17,7 +17,9 @@ from app.services.nptel_service import search_nptel
 # 0.80 -> Weak
 # ----------------------------------------------------------
 
-SIMILARITY_THRESHOLD = 0.75
+UPLOADED_DB_THRESHOLD = 0.90
+
+SUBJECT_DB_THRESHOLD = 1.80
 
 
 def hybrid_search(subject: str, question: str):
@@ -36,50 +38,52 @@ def hybrid_search(subject: str, question: str):
     print("===================================\n")
 
     # =====================================================
-    # STEP 1 : Search Uploaded Document
+    # STEP 1 : Decide which database to search
     # =====================================================
 
-    uploaded_docs, uploaded_score = search_uploaded_document(
-        query=question,
-        k=5,
-    )
+    # ---------- CASE 1 : Subject is selected ----------
+    if subject:
 
-    if (uploaded_docs
-        and uploaded_score is not None
-        and uploaded_score <= SIMILARITY_THRESHOLD):
+        print("\nUsing Subject Knowledge Base\n")
 
-        print("\nUsing Uploaded Document.\n")
-
-        return {
-            "documents": uploaded_docs,
-            "score": uploaded_score,
-            "videos": [],
-            "khan": [],
-            "nptel": [],
-            "used_external": False,
-            "source": "uploaded_document",
-        }
-
-    # =====================================================
-    # STEP 2 : Search Subject Knowledge Base
-    # =====================================================
-    
-    if subject is None:
-         raise ValueError(
-            "No uploaded document exists. Please specify a subject."
+        documents, score = search_knowledge(
+            subject=subject,
+            query=question,
+            k=5,
         )
 
-    documents, score = search_knowledge(
-        subject=subject,
-        query=question,
-        k=5,
-    )
+        print("Retrieved docs :", len(documents))
+        print("Retrieved score:", score)
 
-    need_external = (
-        len(documents) == 0
-        or score is None
-        or score > SIMILARITY_THRESHOLD
-    )
+        source = "knowledge_base"
+
+    # ---------- CASE 2 : No subject -> use uploaded document ----------
+    else:
+
+        print("\nUsing Uploaded Document\n")
+
+        documents, score = search_uploaded_document(
+            query=question,
+            k=5,
+        )
+
+        print("Uploaded docs :", len(documents))
+        print("Uploaded score:", score)
+
+        source = "uploaded_document"
+
+    # =====================================================
+    # Decide whether external search is needed
+    # =====================================================
+
+    if len(documents) == 0:
+        need_external = True
+
+    elif score is None:
+        need_external = True
+
+    else:
+        need_external = False
 
     youtube = []
     khan = []
@@ -103,7 +107,7 @@ def hybrid_search(subject: str, question: str):
         print("\nKnowledge Base confidence is low.")
         print("Fetching External Educational Resources...\n")
 
-        search_query = f"{subject} {question}"
+        search_query = question if subject is None else f"{subject} {question}"
 
         youtube = search_youtube(
             search_query,
@@ -125,5 +129,5 @@ def hybrid_search(subject: str, question: str):
         "khan": khan,
         "nptel": nptel,
         "used_external": need_external,
-        "source": "knowledge_base",
+        "source": source,
     }

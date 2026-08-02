@@ -1,27 +1,33 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.pyd
 
 # Virtual Environment
 venv/
+.env/
+env/
 
 # Environment Variables
 .env
 
+# Chroma Database
+chroma_db/
+
 # Uploaded Files
 uploads/
 
-# Uploaded Chroma Database
-uploaded_db/
-chroma_db/
+# Cache
+.pytest_cache/
+.cache/
+
 # IDE
 .vscode/
 .idea/
 
 # OS Files
-Thumbs.db
 .DS_Store
+Thumbs.db
 
-knowledge_base/
+# Logs
+*.log

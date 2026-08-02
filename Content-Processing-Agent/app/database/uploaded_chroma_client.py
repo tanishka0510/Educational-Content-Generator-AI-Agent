@@ -5,10 +5,10 @@ Stores uploaded documents separately from
 the permanent knowledge base.
 """
 
+from pathlib import Path
+
 import chromadb
 from chromadb.config import Settings
-
-from pathlib import Path
 
 
 class UploadedChromaClient:
@@ -17,7 +17,7 @@ class UploadedChromaClient:
     _collection = None
 
     @classmethod
-    def get_collection(cls):
+    def get_client(cls):
 
         if cls._client is None:
 
@@ -32,9 +32,14 @@ class UploadedChromaClient:
                 )
             )
 
+        return cls._client
+
+    @classmethod
+    def get_collection(cls):
+
         if cls._collection is None:
 
-            cls._collection = cls._client.get_or_create_collection(
+            cls._collection = cls.get_client().get_or_create_collection(
                 name="uploaded_documents"
             )
 

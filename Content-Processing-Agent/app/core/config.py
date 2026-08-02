@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
 
-    LLM_MODEL: str = "gpt-4.1-mini"
+    LLM_MODEL: str = "gemini-2.5-flash"
 
     # =====================================================
     # OCR

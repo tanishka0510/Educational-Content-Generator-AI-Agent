@@ -65,6 +65,18 @@ def load_documents(subject_folder: Path):
                     continue
 
                 loaded_docs = loader.load()
+                
+                # ---------------- DEBUG ----------------
+                for doc in loaded_docs:
+                    if "deadlock" in doc.page_content.lower():
+
+                        print("\n" + "=" * 80)
+                        print("FOUND DEADLOCK")
+                        print("File :", file.name)
+                        print("Page :", doc.metadata.get("page"))
+                        print(doc.page_content)
+                        print("=" * 80)
+                # ---------------------------------------
 
                 # ---------- IMPORTANT ----------
                 for doc in loaded_docs:

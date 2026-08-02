@@ -2,7 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from google import genai
-
+from app.core.config import settings
 load_dotenv()
 
 # =====================================================
@@ -17,26 +17,48 @@ client = genai.Client(
 # General Question Answering (RAG)
 # =====================================================
 
-SYSTEM_PROMPT = """
+def generate_answer(
+    context: str,
+    question: str,
+    source: str = "knowledge_base",
+) -> str:
+    """
+    Generates an answer using the retrieved context.
+    """
+
+    if source == "uploaded_document":
+
+        system_prompt = """
+You are an educational assistant.
+
+Answer ONLY from the uploaded document.
+
+Rules:
+- Use ONLY the provided context.
+- Do NOT use outside knowledge.
+- Do NOT invent information.
+- If the answer is not present in the uploaded document, reply:
+"The uploaded document does not contain enough information."
+- Explain in simple educational language.
+"""
+
+    else:
+
+        system_prompt = """
 You are an educational assistant.
 
 Answer ONLY from the provided study material.
 
 Rules:
-- Do not invent facts.
+- Use ONLY the provided context.
+- Do NOT invent facts.
 - If the answer is not available in the context, reply:
-  "The uploaded knowledge base does not contain enough information."
+"The local knowledge base does not contain enough information."
 - Explain in simple educational language.
 """
 
-
-def generate_answer(context: str, question: str) -> str:
-    """
-    Generates an answer using the retrieved context.
-    """
-
     prompt = f"""
-{SYSTEM_PROMPT}
+{system_prompt}
 
 Context:
 {context}
@@ -48,8 +70,8 @@ Answer:
 """
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
+        model=settings.LLM_MODEL,
+        contents=prompt,
     )
 
     return response.text.strip()

@@ -7,7 +7,7 @@ load_dotenv()
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-
+from app.core.config import settings
 from app.knowledge.knowledge_loader import load_documents
 
 
@@ -29,7 +29,7 @@ print("Chroma Root    :", CHROMA_ROOT)
 # ==========================================================
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    model_name=settings.EMBEDDING_MODEL
 )
 
 # ==========================================================
@@ -79,6 +79,7 @@ def build_subject_database(subject_folder: Path):
     )
 
     print(f"Database Saved : {subject_db}")
+    print("Indexer model:", settings.EMBEDDING_MODEL)
     print(f"Collection Count : {vectordb._collection.count()}")
 
 
