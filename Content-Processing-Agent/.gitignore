@@ -1,7 +1,8 @@
 # Python
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
+*.pyd
 
 # Virtual Environment
 venv/
@@ -16,7 +17,7 @@ chroma_db/
 
 # Uploaded Files
 uploads/
-
+uploaded_db/
 # Cache
 .pytest_cache/
 .cache/
@@ -28,6 +29,7 @@ uploads/
 # OS Files
 .DS_Store
 Thumbs.db
+knowledge_base/
 
 # Logs
 *.log
