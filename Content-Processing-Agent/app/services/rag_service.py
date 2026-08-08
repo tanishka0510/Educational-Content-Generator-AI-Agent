@@ -1,5 +1,17 @@
+"""
+RAG Service
+
+Coordinates retrieval and LLM generation.
+
+The hybrid_retriever is the ONLY component responsible
+for deciding whether external search is required.
+"""
+
 from app.services.hybrid_retriever import hybrid_search
-from app.services.llm_service import generate_answer, process_content
+from app.services.llm_service import (
+    generate_answer,
+    process_content,
+)
 
 
 # ==========================================================
@@ -13,50 +25,54 @@ def ask_question(subject: str, question: str):
     docs = data["documents"]
     score = data["score"]
 
-    videos = data["videos"]
-    khan = data["khan"]
-    nptel = data["nptel"]
+    external_context = data.get("external_context", "")
+    external_sources = data.get("external_sources", [])
 
-    used_external = data["used_external"]
-
-    # --------------------------------------------------
-    # No Local Knowledge
-    # --------------------------------------------------
-
-    if len(docs) == 0:
-
-        response = {
-            "question": question,
-            "answer": (
-                "The uploaded knowledge base does not contain enough "
-                "information to answer this question."
-            ),
-            "sources": [],
-            "retrieval_score": score,
-        }
-
-        if used_external:
-            response["videos"] = videos
-            response["khan"] = khan
-            response["nptel"] = nptel
-
-        return response
+    videos = data.get("videos", [])
+    khan = data.get("khan", [])
+    nptel = data.get("nptel", [])
 
     # --------------------------------------------------
     # Build Context
     # --------------------------------------------------
 
-    print("\n========== DOCS PASSED TO LLM ==========\n")
+    context = ""
 
-    for i, doc in enumerate(docs, start=1):
-        print(f"Document {i}")
-        print(doc.page_content[:300])
-        print("-" * 60)
-    
-    context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
+    if docs:
+
+        context += "\n\n".join(
+            doc.page_content
+            for doc in docs
+        )
+
+    if external_context:
+
+        context += (
+            "\n\n========== WEB KNOWLEDGE ==========\n"
+            + external_context
+        )
+
+    # --------------------------------------------------
+    # Nothing Retrieved
+    # --------------------------------------------------
+
+    if context.strip() == "":
+
+        if data["source"] == "uploaded_document":
+
+            return {
+                "question": question,
+                "answer": "The uploaded document does not contain enough information.",
+                "sources": [],
+                "retrieval_score": score,
+            }
+
+        return {
+            "question": question,
+            "answer": "No relevant information could be found.",
+            "sources": [],
+            "retrieval_score": score,
+        }
 
     # --------------------------------------------------
     # Generate Answer
@@ -67,20 +83,27 @@ def ask_question(subject: str, question: str):
         question=question,
         source=data["source"],
     )
-    print("\n========== CONTEXT SENT TO GEMINI ==========\n")
-    print(context)
-    print("\n============================================\n")
 
     # --------------------------------------------------
-    # Sources
+    # Collect Sources
     # --------------------------------------------------
 
-    sources = list(
-        dict.fromkeys(
-            doc.metadata.get("source", "")
-            for doc in docs
+    sources = []
+
+    if docs:
+
+        sources.extend(
+            list(
+                dict.fromkeys(
+                    doc.metadata.get("source", "")
+                    for doc in docs
+                )
+            )
         )
-    )
+
+    sources.extend(external_sources)
+
+    sources = list(dict.fromkeys(sources))
 
     # --------------------------------------------------
     # Response
@@ -93,20 +116,14 @@ def ask_question(subject: str, question: str):
         "retrieval_score": score,
     }
 
-    # --------------------------------------------------
-    # Attach external resources ONLY if used
-    # --------------------------------------------------
+    if videos:
+        response["videos"] = videos
 
-    if used_external:
+    if khan:
+        response["khan"] = khan
 
-        if videos:
-            response["videos"] = videos
-
-        if khan:
-            response["khan"] = khan
-
-        if nptel:
-            response["nptel"] = nptel
+    if nptel:
+        response["nptel"] = nptel
 
     return response
 
@@ -122,22 +139,53 @@ def process_question(subject: str, question: str):
     docs = data["documents"]
     score = data["score"]
 
-    videos = data["videos"]
-    khan = data["khan"]
-    nptel = data["nptel"]
+    external_context = data.get("external_context", "")
+    external_sources = data.get("external_sources", [])
 
-    used_external = data["used_external"]
+    videos = data.get("videos", [])
+    khan = data.get("khan", [])
+    nptel = data.get("nptel", [])
 
     # --------------------------------------------------
-    # No Local Knowledge
+    # Build Context
     # --------------------------------------------------
 
-    if len(docs) == 0:
+    context = ""
 
-        response = {
-            "summary": (
-                "No relevant information was found in the selected subject."
-            ),
+    if docs:
+
+        context += "\n\n".join(
+            doc.page_content
+            for doc in docs
+        )
+
+    if external_context:
+
+        context += (
+            "\n\n========== WEB KNOWLEDGE ==========\n"
+            + external_context
+        )
+
+    # --------------------------------------------------
+    # Nothing Retrieved
+    # --------------------------------------------------
+
+    if context.strip() == "":
+
+        if data["source"] == "uploaded_document":
+
+            return {
+                "summary": "The uploaded document does not contain enough information.",
+                "learning_objectives": [],
+                "keywords": [],
+                "concepts": [],
+                "difficulty": "Unknown",
+                "sources": [],
+                "retrieval_score": score,
+            }
+
+        return {
+            "summary": "No relevant information found.",
             "learning_objectives": [],
             "keywords": [],
             "concepts": [],
@@ -146,63 +194,49 @@ def process_question(subject: str, question: str):
             "retrieval_score": score,
         }
 
-        if used_external:
-
-            if videos:
-                response["videos"] = videos
-
-            if khan:
-                response["khan"] = khan
-
-            if nptel:
-                response["nptel"] = nptel
-
-        return response
-
-    # --------------------------------------------------
-    # Build Context
-    # --------------------------------------------------
-
-    context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
-
     # --------------------------------------------------
     # Generate Educational Content
     # --------------------------------------------------
 
     result = process_content(
         context=context,
-        question=question
+        question=question,
+        source=data["source"],
     )
 
     # --------------------------------------------------
-    # Sources
+    # Collect Sources
     # --------------------------------------------------
 
-    result["sources"] = list(
-        dict.fromkeys(
-            doc.metadata.get("source", "")
-            for doc in docs
+    sources = []
+
+    if docs:
+
+        sources.extend(
+            list(
+                dict.fromkeys(
+                    doc.metadata.get("source", "")
+                    for doc in docs
+                )
+            )
         )
-    )
 
+    sources.extend(external_sources)
+
+    result["sources"] = list(dict.fromkeys(sources))
     result["retrieval_score"] = score
 
     # --------------------------------------------------
-    # Attach external resources ONLY if used
+    # Optional Educational Resources
     # --------------------------------------------------
 
-    if used_external:
+    if videos:
+        result["videos"] = videos
 
-        if videos:
-            result["videos"] = videos
+    if khan:
+        result["khan"] = khan
 
-        if khan:
-            result["khan"] = khan
-
-        if nptel:
-            result["nptel"] = nptel
+    if nptel:
+        result["nptel"] = nptel
 
     return result

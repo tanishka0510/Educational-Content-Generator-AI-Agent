@@ -2,12 +2,15 @@
 Upload API
 """
 
-from fastapi import APIRouter, File, UploadFile
-
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from fastapi import Form
 from app.models.document import Document
 from app.services.storage_service import StorageService
 from app.services.processing_service import ProcessingService
+import inspect
+from app.services.processing_service import ProcessingService
 
+print(inspect.signature(ProcessingService.process))
 router = APIRouter(
     prefix="/upload",
     tags=["Upload"]
@@ -16,6 +19,7 @@ router = APIRouter(
 
 @router.post("/")
 async def upload_document(
+    subject: str = Form(...),
     file: UploadFile = File(...)
 ):
     """
@@ -33,7 +37,19 @@ async def upload_document(
     )
 
     # Process document
-    document = ProcessingService.process(document)
+    try:
+
+        document = ProcessingService.process(
+            document=document,
+            selected_subject=subject,
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
 
     return {
         "message": "File uploaded successfully.",

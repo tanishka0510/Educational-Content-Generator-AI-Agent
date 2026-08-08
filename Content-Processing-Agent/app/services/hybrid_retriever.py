@@ -2,49 +2,34 @@ from app.knowledge.knowledge_service import (
     search_knowledge,
     search_uploaded_document,
 )
+
 from app.services.youtube_service import search_youtube
 from app.services.khan_service import search_khan
 from app.services.nptel_service import search_nptel
+from app.services.tavily_service import search_tavily
+from app.services.duckduckgo_service import search_duckduckgo
+
+from app.core.config import settings
 
 
-# ----------------------------------------------------------
-# Lower distance = Better semantic match
-#
-# 0.00 -> Perfect
-# 0.30 -> Excellent
-# 0.50 -> Very Good
-# 0.65 -> Good
-# 0.80 -> Weak
-# ----------------------------------------------------------
-
-UPLOADED_DB_THRESHOLD = 0.90
-
-SUBJECT_DB_THRESHOLD = 1.80
+UPLOADED_DB_THRESHOLD = settings.UPLOADED_DB_THRESHOLD
+SUBJECT_DB_THRESHOLD = settings.SUBJECT_DB_THRESHOLD
 
 
 def hybrid_search(subject: str, question: str):
-    """
-    Hybrid Retrieval Pipeline
-
-    Priority:
-    1. Uploaded Document (if available)
-    2. Subject Knowledge Base
-    3. External Educational Resources
-    """
 
     print("\n========== HYBRID SEARCH ==========")
-    print("Subject  :", subject)
-    print("Question :", question)
+    print("Subject :", subject)
+    print("Question:", question)
     print("===================================\n")
 
     # =====================================================
-    # STEP 1 : Decide which database to search
+    # STEP 1 : Local Retrieval
     # =====================================================
 
-    # ---------- CASE 1 : Subject is selected ----------
     if subject:
 
-        print("\nUsing Subject Knowledge Base\n")
+        print("Searching Subject Database...\n")
 
         documents, score = search_knowledge(
             subject=subject,
@@ -52,82 +37,198 @@ def hybrid_search(subject: str, question: str):
             k=5,
         )
 
-        print("Retrieved docs :", len(documents))
-        print("Retrieved score:", score)
-
         source = "knowledge_base"
 
-    # ---------- CASE 2 : No subject -> use uploaded document ----------
     else:
 
-        print("\nUsing Uploaded Document\n")
+        print("Searching Uploaded Document...\n")
 
         documents, score = search_uploaded_document(
             query=question,
             k=5,
         )
 
-        print("Uploaded docs :", len(documents))
-        print("Uploaded score:", score)
-
         source = "uploaded_document"
 
+    print("Retrieved Docs :", len(documents))
+    print("Score :", score)
+
     # =====================================================
-    # Decide whether external search is needed
+    # STEP 2 : Decide whether Web Search is required
     # =====================================================
 
-    if len(documents) == 0:
-        need_external = True
+    use_external = False
 
-    elif score is None:
-        need_external = True
+    # -----------------------------------------------------
+    # Uploaded Document Mode
+    # -----------------------------------------------------
+    # Never use web search when an uploaded document exists.
+    # If the uploaded document doesn't contain the answer,
+    # Gemini should return:
+    # "The uploaded document does not contain enough information."
+    # -----------------------------------------------------
+
+    if source == "uploaded_document":
+
+        use_external = False
+
+    # -----------------------------------------------------
+    # Subject Knowledge Base Mode
+    # -----------------------------------------------------
 
     else:
-        need_external = False
+
+        if len(documents) == 0:
+
+            use_external = True
+
+        elif score is None:
+
+            use_external = True
+
+        elif score > SUBJECT_DB_THRESHOLD:
+
+            use_external = True
+
+        else:
+
+            use_external = False
+
+    # =====================================================
+    # STEP 3 : External Search
+    # =====================================================
+
+    external_context = ""
+    external_sources = []
+
+    # -----------------------------------------------------
+    # Uploaded Document
+    # -----------------------------------------------------
+
+    if source == "uploaded_document":
+
+        print("\n========== UPLOADED DOCUMENT MODE ==========")
+        print("External search is disabled.")
+        print("Only uploaded document will be used.\n")
+
+    # -----------------------------------------------------
+    # Subject KB + Web Fallback
+    # -----------------------------------------------------
+
+    elif use_external:
+
+        print("\n========== WEB FALLBACK ==========\n")
+
+        # ---------- Tavily ----------
+        try:
+
+            tavily_context, tavily_sources = search_tavily(question)
+
+            external_context += tavily_context
+
+            external_sources.extend(tavily_sources)
+
+        except Exception as e:
+
+            print("Tavily Error :", e)
+
+        # ---------- DuckDuckGo ----------
+        try:
+
+            duck_context = search_duckduckgo(question)
+
+            if duck_context:
+
+                external_context += "\n\n" + duck_context
+
+        except Exception as e:
+
+            print("DuckDuckGo Error :", e)
+
+        if external_context.strip():
+
+            source = "web"
+
+    # -----------------------------------------------------
+    # Local KB sufficient
+    # -----------------------------------------------------
+
+    else:
+
+        print("\nLocal KB sufficient.\n")
+
+    # =====================================================
+    # STEP 4 : Educational Resources
+    # =====================================================
 
     youtube = []
     khan = []
     nptel = []
 
-    # =====================================================
-    # STEP 3 : Subject KB is enough
-    # =====================================================
+    question_lower = question.lower()
 
-    if not need_external:
+    # ---------- YouTube only if user explicitly asks ----------
+    wants_video = any(
+        keyword in question_lower
+        for keyword in [
+            "video",
+            "youtube",
+            "watch",
+            "lecture",
+            "tutorial",
+        ]
+    )
 
-        print("\nLocal Knowledge Base is sufficient.")
-        print("Skipping External APIs.\n")
+    if wants_video:
 
-    # =====================================================
-    # STEP 4 : Fetch External Resources
-    # =====================================================
-
-    else:
-
-        print("\nKnowledge Base confidence is low.")
-        print("Fetching External Educational Resources...\n")
-
-        search_query = question if subject is None else f"{subject} {question}"
+        print("\nSearching YouTube...\n")
 
         youtube = search_youtube(
-            search_query,
+            question,
             max_results=3,
         )
 
-        khan = search_khan(search_query)
+    # ---------- Course Resources ----------
+    wants_course = any(
+        keyword in question_lower
+        for keyword in [
+            "course",
+            "learn",
+            "study",
+            "full course",
+        ]
+    )
 
-        nptel = search_nptel(search_query)
+    if wants_course:
+
+        print("\nSearching Khan Academy...\n")
+        khan = search_khan(question)
+
+        print("\nSearching NPTEL...\n")
+        nptel = search_nptel(question)
 
     # =====================================================
-    # Return
+    # STEP 5 : Return
     # =====================================================
 
     return {
+
         "documents": documents,
+
         "score": score,
-        "videos": youtube,
-        "khan": khan,
-        "nptel": nptel,
-        "used_external": need_external,
+
         "source": source,
+
+        "used_external": use_external,
+
+        "external_context": external_context,
+
+        "external_sources": external_sources,
+
+        "videos": youtube,
+
+        "khan": khan,
+
+        "nptel": nptel,
+
     }

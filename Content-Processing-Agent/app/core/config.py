@@ -43,6 +43,21 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
 
     LLM_MODEL: str = "gemini-2.5-flash"
+    
+    # =====================================================
+    # External APIs
+    # =====================================================
+
+    TAVILY_API_KEY: str = "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"
+
+    TAVILY_MAX_RESULTS: int = 5
+    
+    # =====================================================
+    # Retrieval Thresholds
+    # =====================================================
+
+    UPLOADED_DB_THRESHOLD: float = 0.90
+    SUBJECT_DB_THRESHOLD: float = 1.80
 
     # =====================================================
     # OCR
