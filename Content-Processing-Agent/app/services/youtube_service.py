@@ -2,11 +2,10 @@ import os
 
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
-
+from app.core.config import settings
 load_dotenv()
 
-YOUTUBE_API_KEY= os.getenv("YOUTUBE_API_KEY")
-
+YOUTUBE_API_KEY = settings.YOUTUBE_API_KEY
 youtube = build(
     "youtube",
     "v3",
