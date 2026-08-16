@@ -6,6 +6,7 @@ and registers all API routes.
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.upload import router as upload_router
 from app.api.retrieve import router as retrieve_router
@@ -15,13 +16,19 @@ from app.core.config import settings
 
 from app.schemas.query_schema import QueryRequest
 from app.schemas.query_response import QueryResponse
-from app.schemas.processed_content_response import ProcessedContentResponse
+from app.schemas.processed_content_response import (
+    ProcessedContentResponse
+)
 
 from app.services.rag_service import (
     ask_question,
     process_question,
 )
 
+from app.services.subject_validator import (
+    validate_question_subject,
+    get_subject_validation_message,
+)
 
 # =====================================================
 # Create FastAPI Application
@@ -34,6 +41,26 @@ app = FastAPI(
         "Content Processing Agent for the Educational "
         "Content Generator Multi-Agent System."
     ),
+)
+
+
+# =====================================================
+# CORS Configuration
+# =====================================================
+
+app.add_middleware(
+    CORSMiddleware,
+
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+
+    allow_credentials=True,
+
+    allow_methods=["*"],
+
+    allow_headers=["*"],
 )
 
 
@@ -58,7 +85,9 @@ async def root():
             f"{settings.PROJECT_NAME} "
             "is running successfully."
         ),
+
         "version": settings.PROJECT_VERSION,
+
         "api_version": settings.API_VERSION,
     }
 
@@ -72,7 +101,9 @@ async def health_check():
 
     return {
         "status": "healthy",
+
         "service": settings.PROJECT_NAME,
+
         "debug": settings.DEBUG,
     }
 
@@ -83,7 +114,9 @@ async def health_check():
 
 @app.post(
     "/ask",
+
     response_model=QueryResponse,
+
     response_model_exclude_none=True,
 )
 def ask(request: QueryRequest):
@@ -115,6 +148,49 @@ def ask(request: QueryRequest):
 def process(request: QueryRequest):
 
     try:
+
+        # =====================================================
+        # STEP 1: Validate Question Against Selected Subject
+        # =====================================================
+
+        is_valid, detected_subject = validate_question_subject(
+            selected_subject=request.subject,
+            question=request.question,
+        )
+
+        print("\n========== SUBJECT VALIDATION ==========")
+        print("Selected Subject :", request.subject)
+        print("Question         :", request.question)
+        print("Detected Subject :", detected_subject)
+        print("Valid             :", is_valid)
+        print("=======================================\n")
+
+        # =====================================================
+        # STEP 2: Reject Question If It Belongs To Another Subject
+        # =====================================================
+
+        if not is_valid:
+
+            return {
+                "summary": get_subject_validation_message(
+                    request.subject
+                ),
+                "learning_objectives": [],
+                "keywords": [],
+                "concepts": [],
+                "difficulty": "Unknown",
+                "topic": None,
+                "intent": "invalid_subject",
+                "response_style": "normal",
+                "unit": None,
+                "sources": [],
+                "retrieval_score": None,
+            }
+
+        # =====================================================
+        # STEP 3: Question Is Valid
+        # Continue With Normal RAG Processing
+        # =====================================================
 
         return process_question(
             subject=request.subject,

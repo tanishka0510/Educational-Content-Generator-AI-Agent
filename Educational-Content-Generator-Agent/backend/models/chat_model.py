@@ -1,5 +1,9 @@
 from pydantic import BaseModel
+from typing import Optional
+
 
 class ChatRequest(BaseModel):
-    filename: str
+    subject: str
     question: str
+    document_uploaded: bool = False
+    filename: Optional[str] = None

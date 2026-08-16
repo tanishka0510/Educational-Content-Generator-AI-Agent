@@ -28,7 +28,6 @@ import httpx
 # ==========================================================
 
 CONTENT_PROCESSING_AGENT_URL = "http://127.0.0.1:8000"
-
 REQUEST_TIMEOUT = 60.0
 
 

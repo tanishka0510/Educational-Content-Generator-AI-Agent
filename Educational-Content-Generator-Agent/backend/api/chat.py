@@ -1,36 +1,56 @@
 from fastapi import APIRouter
-import os
 
 from models.chat_model import ChatRequest
-from services.pdf_reader import extract_text
-from services.text_cleaner import clean_text
-from services.chat_service import chat_with_document
+from services.content_processing_client import process_content
+from services.chat_service import process_chat_query
+
 
 router = APIRouter()
-
-UPLOAD_FOLDER = "uploads"
 
 
 @router.post("/chat")
 async def chat(request: ChatRequest):
 
-    file_path = os.path.join(UPLOAD_FOLDER, request.filename)
+    # ======================================================
+    # Step 1: Ask the Content Processing Agent to process
+    # the user's question/request.
+    #
+    # If document_uploaded=True:
+    #     Content Processing Agent should use the uploaded
+    #     document.
+    #
+    # If document_uploaded=False:
+    #     Content Processing Agent should use the selected
+    #     subject's knowledge base / external retrieval.
+    # ======================================================
 
-    if not os.path.exists(file_path):
-        return {
-            "error": "File not found."
-        }
-
-    text = extract_text(file_path)
-
-    text = clean_text(text)
-
-    answer = chat_with_document(
-        text,
-        request.question
+    content_response = process_content(
+        subject=request.subject,
+        question=request.question,
+        document_uploaded=request.document_uploaded,
     )
 
-    return {
-        "question": request.question,
-        "answer": answer
-    }
+    # ======================================================
+    # Step 2: Educational Content Generator takes the
+    # processed information and generates the final answer.
+    #
+    # The chat service also handles the requested response
+    # style, such as:
+    #
+    # - brief
+    # - detailed
+    # - one word
+    # - beginner friendly
+    # - exam oriented
+    # - step by step
+    # - bullet points
+    # ======================================================
+
+    response = process_chat_query(
+        subject=request.subject,
+        question=request.question,
+        content_response=content_response,
+        document_uploaded=request.document_uploaded,
+    )
+
+    return response

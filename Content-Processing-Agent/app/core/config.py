@@ -11,7 +11,12 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 class Settings(BaseSettings):
 
     # =====================================================
@@ -42,13 +47,11 @@ class Settings(BaseSettings):
 
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
 
-    LLM_MODEL: str = "gemini-2.5-flash"
+    LLM_MODEL: str = "gemini-3.1-flash-lite"
     
     # =====================================================
     # External APIs
     # =====================================================
-
-    TAVILY_API_KEY: str = "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"
 
     TAVILY_MAX_RESULTS: int = 5
     
@@ -57,7 +60,7 @@ class Settings(BaseSettings):
     # =====================================================
 
     UPLOADED_DB_THRESHOLD: float = 0.90
-    SUBJECT_DB_THRESHOLD: float = 1.80
+    SUBJECT_DB_THRESHOLD: float = 0.70
 
     # =====================================================
     # OCR
