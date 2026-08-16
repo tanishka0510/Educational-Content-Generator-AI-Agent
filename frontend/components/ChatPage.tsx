@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatMessage from "@/components/ChatMessage";
 
@@ -27,6 +27,17 @@ interface ChatResponse {
   unit?: string;
   retrieval_score?: number;
   sources?: string[];
+}
+
+interface UploadResponse {
+  message?: string;
+  filename?: string;
+  file_name?: string;
+  file_type?: string;
+  status?: string;
+  success?: boolean;
+  chunks_created?: number;
+  embedding_dimension?: number;
 }
 
 interface Message {
@@ -62,6 +73,19 @@ const STORAGE_KEY =
 
 const SUBJECT_STORAGE_KEY =
   "educational-content-generator-selected-subject";
+
+// =====================================================
+// Backend URLs
+// =====================================================
+
+const BACKEND_URL =
+  "http://127.0.0.1:8000";
+
+const PROCESS_CONTENT_URL =
+  `${BACKEND_URL}/process-content`;
+
+const UPLOAD_URL =
+  `${BACKEND_URL}/upload/`;
 
 // =====================================================
 // Subject Names
@@ -177,25 +201,29 @@ export default function ChatPage({
   // Current Question
   // ===================================================
 
-  const [question, setQuestion] = useState<string>("");
+  const [question, setQuestion] =
+    useState<string>("");
 
   // ===================================================
   // Current Messages
   // ===================================================
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] =
+    useState<Message[]>([]);
 
   // ===================================================
   // Loading
   // ===================================================
 
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] =
+    useState<boolean>(false);
 
   // ===================================================
   // All Saved Chats
   // ===================================================
 
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] =
+    useState<Chat[]>([]);
 
   // ===================================================
   // Active Chat
@@ -203,6 +231,29 @@ export default function ChatPage({
 
   const [activeChatId, setActiveChatId] =
     useState<string | null>(null);
+
+  // ===================================================
+  // Uploaded Document
+  // ===================================================
+
+  const [uploadedFile, setUploadedFile] =
+    useState<File | null>(null);
+
+  const [documentUploaded, setDocumentUploaded] =
+    useState<boolean>(false);
+
+  const [uploading, setUploading] =
+    useState<boolean>(false);
+
+  const [uploadError, setUploadError] =
+    useState<string>("");
+
+  // ===================================================
+  // Hidden File Input Reference
+  // ===================================================
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
 
   // ===================================================
   // Current Subject Name
@@ -289,6 +340,8 @@ export default function ChatPage({
     setMessages([]);
     setQuestion("");
     setActiveChatId(null);
+
+    // Uploaded document remains active.
   };
 
   // ===================================================
@@ -298,205 +351,503 @@ export default function ChatPage({
   const handleSelectChat = (
     chat: Chat
   ): void => {
-    /*
-     * IMPORTANT:
-     *
-     * The subject of an existing chat is handled by
-     * the parent Home page.
-     *
-     * ChatPage cannot directly change the parent's
-     * subject because subject is now controlled by Home.
-     *
-     * Therefore, this loads the selected chat only.
-     */
-
     setActiveChatId(chat.id);
     setMessages(chat.messages);
     setQuestion("");
   };
 
   // ===================================================
-  // Send Message
+  // Open File Picker
   // ===================================================
 
-  const sendMessage = async (): Promise<void> => {
-    if (!question.trim() || loading) {
+  const handleOpenFilePicker = (): void => {
+    if (uploading || loading) {
       return;
     }
 
-    const userQuestion = question.trim();
+    fileInputRef.current?.click();
+  };
 
-    setQuestion("");
+  // ===================================================
+  // Upload Document
+  // ===================================================
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
+    const file =
+      event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
 
     // =================================================
-    // Add User Message
+    // Clear Previous Error
     // =================================================
 
-    const userMessage: Message = {
-      role: "user",
-      content: userQuestion,
-    };
+    setUploadError("");
 
-    const updatedMessages: Message[] = [
-      ...messages,
-      userMessage,
+    // =================================================
+    // Supported File Extensions
+    // =================================================
+
+    const allowedExtensions = [
+      // Documents
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".ppt",
+      ".pptx",
+      ".txt",
+      ".md",
+
+      // Images
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".bmp",
+      ".tiff",
+
+      // Audio
+      ".wav",
+      ".mp3",
+      ".m4a",
     ];
 
-    setMessages(updatedMessages);
+    const fileName =
+      file.name.toLowerCase();
 
-    setLoading(true);
-
-    try {
-      // =================================================
-      // Backend Request
-      // =================================================
-
-      const response = await fetch(
-        "http://127.0.0.1:8000/process-content",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            subject: subject,
-            question: userQuestion,
-            document_uploaded: false,
-          }),
-        }
+    const isAllowed =
+      allowedExtensions.some(
+        (extension) =>
+          fileName.endsWith(extension)
       );
 
+    if (!isAllowed) {
+      setUploadError(
+        "Unsupported file type. Please upload PDF, DOC, DOCX, PPT, PPTX, TXT, MD, image, or audio files."
+      );
+
+      event.target.value = "";
+      return;
+    }
+
+    // =================================================
+    // Start Upload
+    // =================================================
+
+    setUploading(true);
+
+    try {
+      const formData =
+        new FormData();
+
+      // =================================================
+      // IMPORTANT
+      //
+      // Backend upload endpoint expects:
+      //
+      // subject: Form(...)
+      // file: UploadFile = File(...)
+      //
+      // Therefore BOTH fields must be sent.
+      // =================================================
+
+      formData.append(
+        "subject",
+        subject
+      );
+
+      formData.append(
+        "file",
+        file
+      );
+
+      console.log(
+        "Uploading file:",
+        file.name
+      );
+
+      console.log(
+        "Selected subject:",
+        subject
+      );
+
+      // =================================================
+      // Send File To Backend
+      // =================================================
+
+      const response =
+        await fetch(
+          UPLOAD_URL,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+      // =================================================
+      // Handle Backend Error
+      // =================================================
+
       if (!response.ok) {
+        let errorMessage =
+          `Upload failed: ${response.status}`;
+
+        try {
+          const errorData =
+            await response.json();
+
+          console.error(
+            "Upload error response:",
+            errorData
+          );
+
+          if (
+            typeof errorData?.detail ===
+            "string"
+          ) {
+            errorMessage =
+              errorData.detail;
+          }
+        } catch {
+          // Keep default error message.
+        }
+
         throw new Error(
-          `Backend error: ${response.status}`
+          errorMessage
         );
       }
 
-      const data: ChatResponse =
+      // =================================================
+      // Parse Successful Response
+      // =================================================
+
+      const data: UploadResponse =
         await response.json();
 
       console.log(
-        "Backend response:",
+        "Document upload response:",
         data
       );
 
       // =================================================
-      // Assistant Message
+      // Upload Successful
       // =================================================
 
-      const assistantMessage: Message = {
-        role: "assistant",
+      setUploadedFile(file);
 
-        content:
-          data.answer ||
-          data.summary ||
-          "I could not generate an answer.",
+      setDocumentUploaded(true);
 
-        comparison_table:
-          data.comparison_table,
-      };
-
-      const finalMessages: Message[] = [
-        ...updatedMessages,
-        assistantMessage,
-      ];
-
-      setMessages(finalMessages);
+      setUploadError("");
 
       // =================================================
-      // Existing Chat
+      // Start Fresh Chat For Uploaded Document
       // =================================================
 
-      if (activeChatId) {
-        setChats(
-          (previousChats) =>
-            previousChats.map((chat) => {
-              if (
-                chat.id !== activeChatId
-              ) {
-                return chat;
-              }
+      setMessages([]);
 
-              return {
-                ...chat,
+      setQuestion("");
 
-                subject: subject,
+      setActiveChatId(null);
 
-                messages:
-                  finalMessages,
-
-                updatedAt:
-                  new Date().toISOString(),
-              };
-            })
-        );
-      }
-
-      // =================================================
-      // New Chat
-      // =================================================
-
-      else {
-        const newChatId =
-          generateChatId();
-
-        const now =
-          new Date().toISOString();
-
-        const newChat: Chat = {
-          id: newChatId,
-
-          subject: subject,
-
-          title:
-            generateChatTitle(
-              userQuestion
-            ),
-
-          messages:
-            finalMessages,
-
-          createdAt: now,
-
-          updatedAt: now,
-        };
-
-        setChats(
-          (previousChats) => [
-            newChat,
-            ...previousChats,
-          ]
-        );
-
-        setActiveChatId(
-          newChatId
-        );
-      }
     } catch (error) {
       console.error(
-        "Error communicating with backend:",
+        "Error uploading document:",
         error
       );
 
-      const errorMessage: Message = {
-        role: "assistant",
+      setDocumentUploaded(false);
 
-        content:
-          "Sorry, I could not connect to the Content Processing Agent.",
-      };
+      setUploadedFile(null);
 
-      const finalMessages: Message[] = [
-        ...updatedMessages,
-        errorMessage,
-      ];
+      if (
+        error instanceof Error
+      ) {
+        setUploadError(
+          error.message
+        );
+      } else {
+        setUploadError(
+          "Could not upload the document."
+        );
+      }
 
-      setMessages(finalMessages);
     } finally {
-      setLoading(false);
+      setUploading(false);
+
+      // Allow selecting the same file again.
+      event.target.value = "";
     }
   };
+
+  // ===================================================
+  // Remove Uploaded Document
+  // ===================================================
+
+  const handleRemoveDocument = (): void => {
+    if (
+      loading ||
+      uploading
+    ) {
+      return;
+    }
+
+    setUploadedFile(null);
+
+    setDocumentUploaded(false);
+
+    setUploadError("");
+
+    // Start a new normal subject chat.
+    setMessages([]);
+
+    setQuestion("");
+
+    setActiveChatId(null);
+  };
+
+  // ===================================================
+  // Send Message
+  // ===================================================
+
+  const sendMessage =
+    async (): Promise<void> => {
+      if (
+        !question.trim() ||
+        loading ||
+        uploading
+      ) {
+        return;
+      }
+
+      const userQuestion =
+        question.trim();
+
+      setQuestion("");
+
+      // =================================================
+      // Add User Message
+      // =================================================
+
+      const userMessage: Message = {
+        role: "user",
+        content: userQuestion,
+      };
+
+      const updatedMessages: Message[] = [
+        ...messages,
+        userMessage,
+      ];
+
+      setMessages(
+        updatedMessages
+      );
+
+      setLoading(true);
+
+      try {
+        // =================================================
+        // Backend Request
+        // =================================================
+
+        const response =
+          await fetch(
+            PROCESS_CONTENT_URL,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                subject:
+                  subject,
+
+                question:
+                  userQuestion,
+
+                // true  -> uploaded-document mode
+                // false -> normal subject retrieval
+                document_uploaded:
+                  documentUploaded,
+              }),
+            }
+          );
+
+        // =================================================
+        // Backend Error
+        // =================================================
+
+        if (!response.ok) {
+          let errorMessage =
+            `Backend error: ${response.status}`;
+
+          try {
+            const errorData =
+              await response.json();
+
+            if (
+              typeof errorData?.detail ===
+              "string"
+            ) {
+              errorMessage =
+                errorData.detail;
+            }
+          } catch {
+            // Keep default error.
+          }
+
+          throw new Error(
+            errorMessage
+          );
+        }
+
+        // =================================================
+        // Parse Response
+        // =================================================
+
+        const data: ChatResponse =
+          await response.json();
+
+        console.log(
+          "Backend response:",
+          data
+        );
+
+        // =================================================
+        // Assistant Message
+        // =================================================
+
+        const assistantMessage: Message = {
+          role: "assistant",
+
+          content:
+            data.answer ||
+            data.summary ||
+            "I could not generate an answer.",
+
+          comparison_table:
+            data.comparison_table,
+        };
+
+        const finalMessages: Message[] = [
+          ...updatedMessages,
+          assistantMessage,
+        ];
+
+        setMessages(
+          finalMessages
+        );
+
+        // =================================================
+        // Existing Chat
+        // =================================================
+
+        if (activeChatId) {
+          setChats(
+            (previousChats) =>
+              previousChats.map(
+                (chat) => {
+                  if (
+                    chat.id !==
+                    activeChatId
+                  ) {
+                    return chat;
+                  }
+
+                  return {
+                    ...chat,
+
+                    subject:
+                      subject,
+
+                    messages:
+                      finalMessages,
+
+                    updatedAt:
+                      new Date().toISOString(),
+                  };
+                }
+              )
+          );
+        }
+
+        // =================================================
+        // New Chat
+        // =================================================
+
+        else {
+          const newChatId =
+            generateChatId();
+
+          const now =
+            new Date().toISOString();
+
+          const newChat: Chat = {
+            id: newChatId,
+
+            subject:
+              subject,
+
+            title:
+              generateChatTitle(
+                userQuestion
+              ),
+
+            messages:
+              finalMessages,
+
+            createdAt:
+              now,
+
+            updatedAt:
+              now,
+          };
+
+          setChats(
+            (previousChats) => [
+              newChat,
+              ...previousChats,
+            ]
+          );
+
+          setActiveChatId(
+            newChatId
+          );
+        }
+
+      } catch (error) {
+        console.error(
+          "Error communicating with backend:",
+          error
+        );
+
+        const errorMessage: Message = {
+          role: "assistant",
+
+          content:
+            error instanceof Error
+              ? error.message
+              : "Sorry, I could not connect to the Content Processing Agent.",
+        };
+
+        const finalMessages: Message[] = [
+          ...updatedMessages,
+          errorMessage,
+        ];
+
+        setMessages(
+          finalMessages
+        );
+
+      } finally {
+        setLoading(false);
+      }
+    };
 
   // ===================================================
   // Handle Enter Key
@@ -522,7 +873,16 @@ export default function ChatPage({
   const handleDefaultQuestion = (
     selectedQuestion: string
   ): void => {
-    setQuestion(selectedQuestion);
+    if (
+      uploading ||
+      loading
+    ) {
+      return;
+    }
+
+    setQuestion(
+      selectedQuestion
+    );
   };
 
   // ===================================================
@@ -568,26 +928,89 @@ export default function ChatPage({
           </div>
 
           {/* =================================================
-              SUBJECT SELECTOR
+              SUBJECT
           ================================================= */}
-
-          {/*
-            IMPORTANT:
-
-            Subject is controlled by the parent Home page.
-
-            Therefore, the subject selector is intentionally
-            removed from ChatPage.
-
-            The selected subject from Home is passed here
-            through the "subject" prop.
-          */}
 
           <div className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white">
             {subjectName}
           </div>
 
         </header>
+
+        {/* =================================================
+            DOCUMENT STATUS
+        ================================================= */}
+
+        {documentUploaded &&
+          uploadedFile && (
+            <div className="border-b border-slate-800 bg-slate-900/70 px-6 py-3">
+
+              <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+
+                <div className="flex min-w-0 items-center gap-3">
+
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800">
+                    📄
+                  </div>
+
+                  <div className="min-w-0">
+
+                    <p className="text-xs font-medium text-slate-400">
+                      Uploaded Document
+                    </p>
+
+                    <p className="truncate text-sm text-white">
+                      {uploadedFile.name}
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <div className="flex shrink-0 items-center gap-3">
+
+                  <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    Document Mode
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleRemoveDocument
+                    }
+                    disabled={
+                      uploading ||
+                      loading
+                    }
+                    className="rounded-lg px-3 py-1.5 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Remove
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+        {/* =================================================
+            UPLOAD ERROR
+        ================================================= */}
+
+        {uploadError && (
+          <div className="border-b border-red-900/40 bg-red-950/30 px-6 py-3">
+
+            <div className="mx-auto max-w-4xl">
+
+              <p className="text-sm text-red-400">
+                {uploadError}
+              </p>
+
+            </div>
+
+          </div>
+        )}
 
         {/* =================================================
             MESSAGES
@@ -603,50 +1026,96 @@ export default function ChatPage({
 
             <div className="flex h-full items-center justify-center px-6">
 
-              <div className="max-w-xl text-center">
+              <div className="max-w-2xl text-center">
 
                 <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl">
-                  💬
+                  {documentUploaded
+                    ? "📄"
+                    : "💬"}
                 </div>
 
                 <h2 className="text-2xl font-semibold">
-                  What would you like to learn?
+
+                  {documentUploaded
+                    ? "Ask about your document"
+                    : "What would you like to learn?"}
+
                 </h2>
 
                 <p className="mt-3 text-slate-500">
-                  Ask a question about{" "}
-                  {subjectName}.
+
+                  {documentUploaded
+                    ? `Ask a question about ${uploadedFile?.name}. Answers will be generated from the uploaded document.`
+                    : `Ask a question about ${subjectName}.`}
+
                 </p>
 
                 {/* =================================================
                     DEFAULT QUESTIONS
                 ================================================= */}
 
-                {defaultQuestions.length > 0 && (
-                  <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {!documentUploaded &&
+                  defaultQuestions.length >
+                    0 && (
 
-                    {defaultQuestions.map(
-                      (
-                        defaultQuestion,
-                        index
-                      ) => (
+                    <div className="mt-6 flex flex-wrap justify-center gap-2">
 
-                        <button
-                          key={index}
-                          onClick={() =>
-                            handleDefaultQuestion(
-                              defaultQuestion
-                            )
-                          }
-                          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                        >
-                          {defaultQuestion}
-                        </button>
+                      {defaultQuestions.map(
+                        (
+                          defaultQuestion,
+                          index
+                        ) => (
 
-                      )
-                    )}
+                          <button
+                            key={index}
+                            onClick={() =>
+                              handleDefaultQuestion(
+                                defaultQuestion
+                              )
+                            }
+                            disabled={
+                              uploading ||
+                              loading
+                            }
+                            className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {defaultQuestion}
+                          </button>
 
-                  </div>
+                        )
+                      )}
+
+                    </div>
+                  )}
+
+                {/* =================================================
+                    UPLOAD BUTTON
+                ================================================= */}
+
+                {!documentUploaded && (
+                  <button
+                    type="button"
+                    onClick={
+                      handleOpenFilePicker
+                    }
+                    disabled={
+                      uploading ||
+                      loading
+                    }
+                    className="mt-7 rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    📎 Upload Document
+                  </button>
+                )}
+
+                {/* =================================================
+                    UPLOADING STATUS
+                ================================================= */}
+
+                {uploading && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Uploading and processing document...
+                  </p>
                 )}
 
               </div>
@@ -681,12 +1150,13 @@ export default function ChatPage({
 
               {loading && (
                 <div className="text-sm text-slate-500">
-                  Thinking...
+                  {documentUploaded
+                    ? "Reading your document..."
+                    : "Thinking..."}
                 </div>
               )}
 
             </div>
-
           )}
 
         </div>
@@ -697,37 +1167,156 @@ export default function ChatPage({
 
         <div className="border-t border-slate-800 p-4">
 
-          <div className="mx-auto flex max-w-4xl items-end gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-2">
+          <div className="mx-auto max-w-4xl">
 
-            <textarea
-              value={question}
-              onChange={(event) =>
-                setQuestion(
-                  event.target.value
-                )
+            {/* =================================================
+                UPLOAD BUTTON + DOCUMENT INDICATOR
+            ================================================= */}
+
+            <div className="mb-2 flex items-center justify-between">
+
+              <div>
+
+                {!documentUploaded ? (
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleOpenFilePicker
+                    }
+                    disabled={
+                      uploading ||
+                      loading
+                    }
+                    className="rounded-lg px-3 py-1.5 text-xs text-slate-500 transition hover:bg-slate-900 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    📎 Upload Document
+                  </button>
+
+                ) : (
+
+                  <span className="text-xs text-slate-500">
+                    📄 Answers are based only on the uploaded document
+                  </span>
+
+                )}
+
+              </div>
+
+              {uploading && (
+                <span className="text-xs text-slate-500">
+                  Uploading...
+                </span>
+              )}
+
+            </div>
+
+            {/* =================================================
+                HIDDEN FILE INPUT
+            ================================================= */}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+
+              /*
+               * Content Processing Agent supports:
+               *
+               * Documents:
+               * PDF, DOCX, PPTX, TXT, MD
+               *
+               * Images:
+               * PNG, JPG, JPEG, BMP, TIFF
+               *
+               * Audio:
+               * WAV, MP3, M4A
+               *
+               * DOC/PPT are included as well because
+               * browsers may expose them depending on
+               * the installed application/file source.
+               */
+
+              accept="
+                .pdf,
+                .doc,
+                .docx,
+                .ppt,
+                .pptx,
+                .txt,
+                .md,
+                .png,
+                .jpg,
+                .jpeg,
+                .bmp,
+                .tiff,
+                .wav,
+                .mp3,
+                .m4a
+              "
+
+              onChange={
+                handleFileUpload
               }
-              onKeyDown={handleKeyDown}
-              placeholder={`Ask a question about ${subjectName}...`}
-              rows={1}
-              className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600"
+
+              className="hidden"
             />
 
-            <button
-              onClick={sendMessage}
-              disabled={
-                !question.trim() ||
-                loading
-              }
-              className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ↑
-            </button>
+            {/* =================================================
+                TEXT INPUT
+            ================================================= */}
+
+            <div className="flex items-end gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-2">
+
+              <textarea
+                value={question}
+
+                onChange={(event) =>
+                  setQuestion(
+                    event.target.value
+                  )
+                }
+
+                onKeyDown={
+                  handleKeyDown
+                }
+
+                placeholder={
+                  documentUploaded
+                    ? "Ask a question about the uploaded document..."
+                    : `Ask a question about ${subjectName}...`
+                }
+
+                rows={1}
+
+                disabled={
+                  uploading
+                }
+
+                className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+
+              <button
+                type="button"
+                onClick={
+                  sendMessage
+                }
+                disabled={
+                  !question.trim() ||
+                  loading ||
+                  uploading
+                }
+                className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ↑
+              </button>
+
+            </div>
+
+            <p className="mt-2 text-center text-xs text-slate-600">
+              Press Enter to send · Shift + Enter for a new line
+            </p>
 
           </div>
-
-          <p className="mt-2 text-center text-xs text-slate-600">
-            Press Enter to send · Shift + Enter for a new line
-          </p>
 
         </div>
 

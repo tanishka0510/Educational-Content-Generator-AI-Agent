@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # =====================================================
 
     TAVILY_MAX_RESULTS: int = 5
+    TAVILY_API_KEY: str = ""
     
     # =====================================================
     # Retrieval Thresholds
