@@ -1,0 +1,85 @@
+# ==========================
+# AI Framework
+# ==========================
+langchain
+langgraph
+langchain-core
+langchain-community
+
+# ==========================
+# Gemini
+# ==========================
+langchain-google-genai
+google-generativeai
+
+# ==========================
+# FastAPI
+# ==========================
+fastapi
+uvicorn
+python-multipart
+
+# ==========================
+# Configuration
+# ==========================
+python-dotenv
+pydantic
+pydantic-settings
+
+# ==========================
+# HTTP Communication
+# ==========================
+httpx
+
+# ==========================
+# Logging
+# ==========================
+loguru
+
+# ==========================
+# JSON
+# ==========================
+orjson
+
+# ==========================
+# Retry
+# ==========================
+tenacity
+
+# ==========================
+# Token Counting
+# ==========================
+tiktoken
+
+# ==========================
+# Async
+# ==========================
+anyio
+
+# ==========================
+# Testing
+# ==========================
+pytest
+pytest-asyncio
+
+# ==========================
+# Development
+# ==========================
+black
+isort
+flake8
+mypy
+
+# ==========================
+# Utilities
+# ==========================
+tqdm
+
+# ==========================
+# Database & Auth & PDF
+# ==========================
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
+reportlab
+pydantic[email]

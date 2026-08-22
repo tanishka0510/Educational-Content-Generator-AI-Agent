@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Educational Multimedia AI Agent</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header>
+
+            <h1>🎓 Educational Multimedia AI Agent</h1>
+
+            <p>
+                Convert educational content into summaries,
+                speech, images and video scripts.
+            </p>
+
+        </header>
+
+        <!-- ========================= -->
+        <!-- Educational Content -->
+        <!-- ========================= -->
+
+        <section class="card">
+
+    <h2>📂 Educational Content</h2>
+
+    <label>Select File</label>
+
+    <input
+        type="file"
+        id="contentFile"
+        accept=".pdf,.txt,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.mp3,.wav,.mp4"
+    >
+
+    <br><br>
+
+    <label>OR Paste Text</label>
+
+    <textarea
+        id="content"
+        placeholder="Paste educational text here..."
+    ></textarea>
+
+    <p class="supported">
+
+        Supported Files:
+
+        PDF • DOCX • PPT • TXT • JPG • PNG • MP3 • WAV • MP4
+
+    </p>
+
+</section>
+        <!-- ========================= -->
+        <!-- Question -->
+        <!-- ========================= -->
+
+        <section class="card">
+
+            <h2>Ask a Question</h2>
+
+            <input
+                type="text"
+                id="question"
+                placeholder="Enter your question..."
+            >
+
+        </section>
+
+        <!-- ========================= -->
+        <!-- Audio Upload -->
+        <!-- ========================= -->
+
+        <section class="card">
+
+            <h2>Upload Audio</h2>
+
+            <input
+                type="file"
+                id="audioFile"
+                accept="audio/*"
+            >
+
+        </section>
+
+        <!-- ========================= -->
+        <!-- Buttons -->
+        <!-- ========================= -->
+
+        <section class="buttons">
+
+            <button id="summaryBtn">
+                📝 Generate Summary
+            </button>
+
+            <button id="audioBtn">
+                🔊 Generate Audio
+            </button>
+
+            <button id="sttBtn">
+                🎤 Speech To Text
+            </button>
+
+            <button id="askBtn">
+                ❓ Ask AI
+            </button>
+
+            <button id="imageBtn">
+                🖼 Generate Image
+            </button>
+
+            <button id="videoBtn">
+                🎬 Generate Video
+            </button>
+
+        </section>
+
+        <!-- ========================= -->
+        <!-- Output -->
+        <!-- ========================= -->
+
+        <section class="card">
+
+            <h2>Output</h2>
+
+            <pre id="output">
+Waiting for response...
+            </pre>
+
+        </section>
+
+        <!-- ========================= -->
+        <!-- Audio Player -->
+        <!-- ========================= -->
+
+        <section class="card">
+
+            <h2>Generated Audio</h2>
+
+            <audio
+                id="audioPlayer"
+                controls
+            >
+            </audio>
+
+        </section>
+
+        <!-- ========================= -->
+        <!-- Generated Image -->
+        <!-- ========================= -->
+
+        <section class="card">
+
+            <h2>Generated Image</h2>
+
+            <img
+                id="generatedImage"
+                src=""
+                alt="Generated Image"
+            >
+
+        </section>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
