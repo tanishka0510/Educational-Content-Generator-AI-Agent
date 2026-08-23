@@ -59,6 +59,10 @@ from app.services.duckduckgo_service import search_duckduckgo
 
 from app.core.config import settings
 from app.services.query_analyzer import QueryAnalyzer
+from app.services.subject_validator import (
+    detect_question_subject,
+    normalize_subject,
+)
 
 
 # ==========================================================
@@ -379,6 +383,204 @@ def perform_web_fallback(
 
 
 # ==========================================================
+# Helper: Resolve Subject
+# ==========================================================
+
+def resolve_subject(
+    subject: str | None,
+    question: str,
+):
+    """
+    Resolve the subject that should be used for retrieval.
+
+    Priority:
+    1. Use the subject provided by the caller.
+    2. If no subject is provided, detect it from the question.
+
+    Returns
+    -------
+    tuple:
+        (resolved_subject, detection_info)
+    """
+
+    # ------------------------------------------------------
+    # Subject explicitly provided
+    # ------------------------------------------------------
+
+    if subject and subject.strip():
+
+        normalized = normalize_subject(subject)
+
+        print(
+            "\nSubject provided by caller :",
+            subject,
+        )
+
+        print(
+            "Normalized subject          :",
+            normalized,
+        )
+
+        return normalized, {
+            "mode": "provided",
+            "confidence": None,
+            "reason": "Subject was provided by the caller.",
+        }
+
+    # ------------------------------------------------------
+    # Automatic subject detection
+    # ------------------------------------------------------
+
+    print(
+        "\nNo subject provided."
+    )
+
+    print(
+        "Attempting automatic subject detection..."
+    )
+
+    detection = detect_question_subject(
+        question
+    )
+
+    print(
+        "Subject detection result :",
+        detection,
+    )
+
+    if not detection:
+        return None, {
+            "mode": "automatic",
+            "confidence": 0,
+            "reason": "No subject could be detected.",
+        }
+
+    # Your validator returns a dictionary.
+    detected_subject = detection.get(
+        "subject"
+    )
+
+    if not detected_subject:
+        return None, {
+            "mode": "automatic",
+            "confidence": detection.get(
+                "score",
+                0,
+            ),
+            "reason": detection.get(
+                "reason",
+                "Subject could not be determined.",
+            ),
+        }
+
+    detected_subject = normalize_subject(
+        detected_subject
+    )
+
+    return detected_subject, {
+        "mode": "automatic",
+        "confidence": detection.get(
+            "score",
+            0,
+        ),
+        "reason": detection.get(
+            "reason",
+            "",
+        ),
+    }
+
+
+# ==========================================================
+# Helper: Resolve Subject
+# ==========================================================
+
+def resolve_subject(
+    subject: str | None,
+    question: str,
+):
+    """
+    Resolve the subject that should be used for retrieval.
+
+    Priority:
+    1. Use the subject provided by the caller.
+    2. If no subject is provided, detect it from the question.
+
+    Returns
+    -------
+    tuple:
+        (resolved_subject, detection_score, detection_mode)
+    """
+
+    # ------------------------------------------------------
+    # Subject explicitly provided
+    # ------------------------------------------------------
+
+    if subject and subject.strip():
+
+        normalized = normalize_subject(subject)
+
+        print(
+            "\nSubject provided by caller :",
+            subject,
+        )
+
+        print(
+            "Normalized subject          :",
+            normalized,
+        )
+
+        return normalized, None, "provided"
+
+    # ------------------------------------------------------
+    # Automatic subject detection
+    # ------------------------------------------------------
+
+    print(
+        "\nNo subject provided."
+    )
+
+    print(
+        "Attempting automatic subject detection..."
+    )
+
+    detected_subject, detection_score = (
+        detect_question_subject(question)
+    )
+
+    print(
+        "Detected Subject :",
+        detected_subject,
+    )
+
+    print(
+        "Detection Score  :",
+        detection_score,
+    )
+
+    # ------------------------------------------------------
+    # Detection failed
+    # ------------------------------------------------------
+
+    if not detected_subject:
+        print(
+            "Could not automatically determine subject."
+        )
+
+        return None, detection_score, "automatic"
+
+    normalized = normalize_subject(
+        detected_subject
+    )
+
+    print(
+        "Normalized Detected Subject :",
+        normalized,
+    )
+
+    return normalized, detection_score, "automatic"
+
+
+# ==========================================================
 # Hybrid Search
 # ==========================================================
 
@@ -446,6 +648,42 @@ def hybrid_search(
     print(
         "Document Uploaded   :",
         document_uploaded,
+    )
+
+
+    # ======================================================
+    # STEP 0 : SUBJECT RESOLUTION
+    # ======================================================
+
+    resolved_subject, subject_detection_score, subject_mode = (
+        resolve_subject(
+            subject=subject,
+            question=question,
+        )
+    )
+
+    print(
+        "\n========== SUBJECT RESOLUTION =========="
+    )
+
+    print(
+        "Original Subject       :",
+        subject,
+    )
+
+    print(
+        "Resolved Subject      :",
+        resolved_subject,
+    )
+
+    print(
+        "Detection Score       :",
+        subject_detection_score,
+    )
+
+    print(
+        "Resolution Mode       :",
+        subject_mode,
     )
 
     # ======================================================
@@ -558,14 +796,15 @@ def hybrid_search(
             "\n========== SUBJECT KNOWLEDGE BASE MODE =========="
         )
 
-        if not subject:
+        if not resolved_subject:
 
             print(
-                "\nERROR: No subject was provided."
+                "\nERROR: Could not determine a subject."
             )
 
             documents = []
             score = None
+            source = "none"
 
         else:
 
@@ -574,13 +813,18 @@ def hybrid_search(
                 retrieval_query,
             )
 
+            print(
+                "Resolved Subject:",
+                resolved_subject,
+            )
+
             documents, score = search_knowledge(
-                subject=subject,
+                subject=resolved_subject,
                 query=retrieval_query,
                 k=5,
             )
 
-        source = "knowledge_base"
+            source = "knowledge_base"
 
     print(
         "\nRetrieved Docs :",
@@ -890,6 +1134,17 @@ def hybrid_search(
     # ======================================================
 
     return {
+
+        # --------------------------------------------------
+        # Subject Resolution
+        # --------------------------------------------------
+
+        "subject": resolved_subject,
+
+        "subject_detection_score": subject_detection_score,
+
+        "subject_resolution_mode": subject_mode,
+
 
         # --------------------------------------------------
         # Retrieval
