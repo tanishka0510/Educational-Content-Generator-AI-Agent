@@ -795,6 +795,7 @@ def process_chat_query(
     Main entry point for the Educational Content
     Generator Agent's chat functionality.
     """
+    subject = content_response.get("subject") or subject
 
     # ======================================================
     # Generate Final Answer

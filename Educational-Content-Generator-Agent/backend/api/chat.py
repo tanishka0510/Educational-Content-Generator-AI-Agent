@@ -46,8 +46,10 @@ async def chat(request: ChatRequest):
     # - bullet points
     # ======================================================
 
+    resolved_subject = content_response.get("subject", request.subject)
+
     response = process_chat_query(
-        subject=request.subject,
+        subject=resolved_subject,
         question=request.question,
         content_response=content_response,
         document_uploaded=request.document_uploaded,

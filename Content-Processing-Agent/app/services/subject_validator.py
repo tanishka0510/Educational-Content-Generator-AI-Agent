@@ -687,13 +687,17 @@ def validate_question_subject(
     if not question or not question.strip():
         return False, "Unknown"
 
-    selected_code = normalize_subject(
-        selected_subject
-    )
+    selected_code = normalize_subject(selected_subject)
 
-    selected_name = get_subject_name(
-        selected_subject
-    )
+    if not selected_code:
+        detected_code, score = detect_question_subject(question)
+
+        if detected_code == "Unknown":
+            return True, "Unknown"
+
+        return True, get_subject_name(detected_code)
+
+    selected_name = get_subject_name(selected_code)
 
     detected_code, score = detect_question_subject(
         question

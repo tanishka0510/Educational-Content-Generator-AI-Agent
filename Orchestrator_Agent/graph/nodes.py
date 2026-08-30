@@ -68,7 +68,7 @@ def content_processing_node(state: AgentState) -> Dict[str, Any]:
     """
     logger.info("Node: Content Processing")
     
-    subject = state.get("subject", "OS")
+    subject = state.get("subject")
     query = state.get("user_query", "")
     document_uploaded = state.get("document_uploaded", False)
     
@@ -103,7 +103,7 @@ def educational_agent_node(state: AgentState) -> Dict[str, Any]:
     """
     logger.info("Node: Educational Agent")
     
-    subject = state.get("subject", "OS")
+    subject = state.get("subject")
     query = state.get("user_query", "")
     document_uploaded = state.get("document_uploaded", False)
     processed_content = state.get("processed_content", {})

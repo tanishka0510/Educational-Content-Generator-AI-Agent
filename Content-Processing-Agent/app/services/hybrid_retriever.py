@@ -359,7 +359,12 @@ def perform_web_fallback(
     # Final result
     # ======================================================
 
-    if external_context.strip():
+    if isinstance(external_context, list):
+        external_context = "\n\n".join(
+            str(item) for item in external_context
+        )
+
+    if external_context and external_context.strip():
 
         print(
             "\nWeb fallback successfully retrieved information."
@@ -818,10 +823,15 @@ def hybrid_search(
                 resolved_subject,
             )
 
-            documents, score = search_knowledge(
-                subject=resolved_subject,
-                query=retrieval_query,
-                k=5,
+
+            if resolved_subject in (None, "UNKNOWN", "Unknown", ""):
+                documents = []
+                score = 0.0
+            else:
+                documents, score = search_knowledge(
+                    subject=resolved_subject,
+                    query=retrieval_query,
+                    k=5,
             )
 
             source = "knowledge_base"
@@ -928,7 +938,12 @@ def hybrid_search(
         # Determine final source
         # --------------------------------------------------
 
-        if external_context.strip():
+        if isinstance(external_context, list):
+            external_context = "\n\n".join(
+                str(item) for item in external_context
+            )
+
+        if external_context and external_context.strip():
 
             source = "web"
 

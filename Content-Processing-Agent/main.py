@@ -193,7 +193,7 @@ def process(request: QueryRequest):
         # =====================================================
 
         return process_question(
-            subject=request.subject,
+            subject=detected_subject or request.subject,
             question=request.question,
             document_uploaded=request.document_uploaded,
         )
