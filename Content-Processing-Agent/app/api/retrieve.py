@@ -9,6 +9,7 @@ This API does NOT generate the final educational answer.
 It only performs retrieval through the Content Processing Agent.
 """
 
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -27,7 +28,7 @@ router = APIRouter(
 
 class RetrieveRequest(BaseModel):
 
-    subject: str
+    subject: Optional[str] = None
     question: str
     document_uploaded: bool = False
 
@@ -49,7 +50,7 @@ async def retrieve_content(request: RetrieveRequest):
     # Validate request
     # ------------------------------------------------------
 
-    if not request.subject.strip():
+    if not request.document_uploaded and (not request.subject or not request.subject.strip()):
 
         raise HTTPException(
             status_code=400,

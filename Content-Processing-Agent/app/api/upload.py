@@ -3,6 +3,7 @@ Upload API
 """
 
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from typing import Optional
 
 from app.models.document import Document
 from app.services.storage_service import StorageService
@@ -17,12 +18,16 @@ router = APIRouter(
 
 @router.post("/")
 async def upload_document(
-    subject: str = Form(...),
+    subject: Optional[str] = Form(default=None),
     file: UploadFile = File(...)
 ):
     """
     Upload and process a document for the selected subject.
+    Subject is optional (defaults to GENERAL) to support Chat document uploads without subject selection.
     """
+
+    # Process subject if provided
+    clean_subject = subject.strip() if subject and subject.strip() else None
 
     # =====================================================
     # Validate file exists
@@ -73,7 +78,7 @@ async def upload_document(
 
         document = ProcessingService.process(
             document=document,
-            selected_subject=subject,
+            selected_subject=clean_subject,
         )
 
     except HTTPException:
@@ -103,6 +108,8 @@ async def upload_document(
         "message": "File uploaded successfully.",
         "filename": document.filename,
         "file_type": document.file_type,
+        "subject": document.subject,
+        "topic": document.topics[0] if document.topics else None,
         "chunks_created": len(document.chunks),
         "embedding_dimension": (
             len(document.chunks[0].embedding)

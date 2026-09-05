@@ -79,7 +79,7 @@ class ProcessingService:
         # Step 4 : Validate Subject
         # --------------------------------------------------
 
-        if selected_subject:
+        if selected_subject and selected_subject.strip().upper() not in ("GENERAL", "ALL", ""):
 
             detected = (document.subject or "").strip().upper()
             expected = selected_subject.strip().upper()
@@ -112,6 +112,10 @@ class ProcessingService:
                         "Please upload a document relevant to the selected subject."
                     ),
                 )
+        else:
+            # Subject is optional (e.g. Chat upload); preserve detected subject or default to GENERAL
+            if not document.subject:
+                document.subject = analysis.get("subject") or "GENERAL"
 
         # --------------------------------------------------
         # Step 5 : Chunking

@@ -174,7 +174,7 @@ def process(request: QueryRequest):
         # STEP 1: Validate Question Against Selected Subject
         # =====================================================
 
-        if selected_subject:
+        if selected_subject and not request.document_uploaded:
             is_valid, detected_subject = validate_question_subject(
                 selected_subject=selected_subject,
                 question=request.question,

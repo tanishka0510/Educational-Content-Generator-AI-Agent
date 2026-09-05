@@ -41,7 +41,7 @@ export default function FlashcardsView({
   onRequireAuth,
 }: FlashcardsViewProps) {
   // Config state
-  const [subject, setSubject] = useState(initialSubject);
+  const [subject, setSubject] = useState(initialSubject || "OS");
   const [difficulty, setDifficulty] = useState(initialDifficulty);
   const [numCards, setNumCards] = useState(initialNumCards);
   const [topic, setTopic] = useState(initialTopic ?? "");
@@ -120,6 +120,12 @@ export default function FlashcardsView({
 
   const startRevision = async () => {
     setError("");
+    const cardSubject = subject.trim();
+    if (!cardSubject) {
+      setError("Please select a subject to generate flashcards.");
+      return;
+    }
+
     setLoading(true);
     setDeck(null);
     setCurrentIndex(0);
@@ -155,7 +161,7 @@ export default function FlashcardsView({
         method: "POST",
         headers,
         body: JSON.stringify({
-          subject,
+          subject: cardSubject,
           topic: topic.trim() || null,
           difficulty,
           number_of_cards: numCards,

@@ -34,6 +34,7 @@ interface QuizViewProps {
   initialDocumentUploaded?: boolean;
   initialNumQuestions?: number;
   autoStart?: boolean;
+  onSubjectChange?: (subject: string) => void;
   onBack: () => void;
   onAuthFailure?: () => void;
   onRequireAuth?: (message?: string) => void;
@@ -46,6 +47,7 @@ export default function QuizView({
   initialDocumentUploaded = false,
   initialNumQuestions = 5,
   autoStart = false,
+  onSubjectChange,
   onBack,
   onAuthFailure,
   onRequireAuth,
@@ -72,6 +74,13 @@ export default function QuizView({
     setNumQuestions(initialNumQuestions);
     setDocumentUploaded(initialDocumentUploaded);
   }, [initialTopic, initialDifficulty, initialNumQuestions, initialDocumentUploaded]);
+
+  const handleSubjectChange = (newSubject: string) => {
+    setSubject(newSubject);
+    if (onSubjectChange) {
+      onSubjectChange(newSubject);
+    }
+  };
 
   // Quiz Game State
   const [quizData, setQuizData] = useState<QuizData | null>(null);
@@ -124,11 +133,13 @@ export default function QuizView({
 
   const startQuiz = async () => {
     setError("");
-    const quizTopic = topic.trim();
-    if (!quizTopic) {
-      setError("Please enter a topic to generate a quiz.");
+    const quizSubject = subject.trim();
+    if (!quizSubject) {
+      setError("Please select a subject before generating a quiz.");
       return;
     }
+
+    const quizTopic = topic.trim();
 
     setLoading(true);
     setQuizData(null);
@@ -156,21 +167,6 @@ export default function QuizView({
     }
 
     try {
-      let quizSubject = subject.trim();
-      if (!quizSubject) {
-        const detectionResponse = await fetch(
-          `http://127.0.0.1:8001/detect-subject?question=${encodeURIComponent(quizTopic)}`
-        );
-        if (detectionResponse.ok) {
-          const detection = await detectionResponse.json();
-          quizSubject = detection.subject || "";
-        }
-      }
-
-      if (!quizSubject) {
-        throw new Error("Please include a recognizable subject in the topic.");
-      }
-
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -180,7 +176,7 @@ export default function QuizView({
 
       const payload = {
         subject: quizSubject,
-        topic: quizTopic,
+        topic: quizTopic || null,
         difficulty,
         number_of_questions: numQuestions,
         document_uploaded: documentUploaded,
@@ -401,7 +397,29 @@ export default function QuizView({
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Topic
+                  Select Subject <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={subject}
+                  onChange={(e) => handleSubjectChange(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-slate-500"
+                >
+                  <option value="">-- Select Subject --</option>
+                  <option value="OS">Operating System</option>
+                  <option value="OOP">Object Oriented Programming</option>
+                  <option value="DBMS">Database Management System</option>
+                  <option value="CNS">Cryptography and Network Security</option>
+                  <option value="SE">Software Engineering</option>
+                  <option value="AI">Artificial Intelligence</option>
+                  <option value="ETC">Effective Technical Communication</option>
+                  <option value="COA">Computer Organization and Architecture</option>
+                  <option value="DATA STRUCTURE">Data Structure</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Topic (Optional)
                 </label>
                 <input
                   type="text"

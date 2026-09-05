@@ -26,7 +26,7 @@ TIMEOUT = 60.0
 # Input schema for generating quiz
 from pydantic import BaseModel
 class QuizGenerateGatewayRequest(BaseModel):
-    subject: Optional[str] = None
+    subject: str
     unit: Optional[str] = None
     topic: Optional[str] = None
     difficulty: str = "medium"
@@ -44,23 +44,10 @@ def generate_quiz_endpoint(
     Allows guest users up to trial limit, as well as authenticated users.
     """
     subject = req.subject.strip() if req.subject else ""
-    if not subject and req.topic:
-        try:
-            with httpx.Client() as client:
-                detection_response = client.get(
-                    f"{CONTENT_PROCESSING_URL}/detect-subject",
-                    params={"question": req.topic},
-                    timeout=TIMEOUT,
-                )
-                if detection_response.status_code == 200:
-                    subject = detection_response.json().get("subject") or ""
-        except httpx.RequestError:
-            pass
-
     if not subject:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please include a recognizable subject in the topic.",
+            detail="Subject is required to generate a quiz.",
         )
 
     url = f"{EDUCATIONAL_AGENT_URL}/quiz/generate"

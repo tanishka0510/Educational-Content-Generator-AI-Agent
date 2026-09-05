@@ -31,7 +31,7 @@ TIMEOUT = 120.0
 @router.post("/")
 async def upload_file_gateway(
     file: UploadFile = File(...),
-    subject: str = Form(...),
+    subject: Optional[str] = Form(default=None),
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
@@ -39,6 +39,7 @@ async def upload_file_gateway(
     Gateway endpoint for document uploading.
     Forwards files as multipart/form-data to Content Processing Agent (Port 8001).
     Persists document metadata in the database for tracking user study materials.
+    Subject is optional (defaults to GENERAL) to support Chat document uploads without subject selection.
     """
     url = f"{CONTENT_PROCESSING_URL}/upload/"
     
@@ -51,9 +52,9 @@ async def upload_file_gateway(
         files = {
             "file": (file.filename, file_content, file.content_type)
         }
-        data = {
-            "subject": subject
-        }
+        data = {}
+        if subject and subject.strip():
+            data["subject"] = subject.strip()
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -75,11 +76,18 @@ async def upload_file_gateway(
             user_id = current_user.id if current_user else None
             chunks_count = cpa_result.get("chunks_created", 0)
 
+            # Store the explicitly provided subject, or the auto-detected subject from CPA, or default to GENERAL
+            final_subject = (
+                (subject.strip() if subject and subject.strip() else None)
+                or cpa_result.get("subject")
+                or "GENERAL"
+            )
+
             doc_create = UploadedDocumentCreate(
                 filename=file.filename,
                 file_type=file_ext,
                 file_size=file_size,
-                subject=subject,
+                subject=final_subject,
                 topic=cpa_result.get("topic"),
                 chunks_count=chunks_count,
                 status="Indexed"
