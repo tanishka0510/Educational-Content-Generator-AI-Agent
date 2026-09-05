@@ -8,6 +8,9 @@ interface Flashcard {
   back: string;
 }
 
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 interface FlashcardDeck {
   subject: string;
   topic: string | null;
@@ -100,7 +103,7 @@ export default function FlashcardsView({
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/flashcards/attempts?subject=${subject}`, { headers });
+      const res = await fetch(`${baseUrl}/flashcards/attempts?subject=${subject}`, { headers });
       if (res.ok) {
         const data = await res.json();
         setDeckAttempts(data);
@@ -157,7 +160,7 @@ export default function FlashcardsView({
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const response = await fetch("http://127.0.0.1:8000/flashcards/generate", {
+      const response = await fetch(`${baseUrl}/flashcards/generate`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -213,7 +216,7 @@ export default function FlashcardsView({
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch("http://127.0.0.1:8000/flashcards/submit", {
+      const res = await fetch(`${baseUrl}/flashcards/submit`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -244,7 +247,7 @@ export default function FlashcardsView({
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        await fetch("http://127.0.0.1:8000/flashcards/attempt", {
+        await fetch(`${baseUrl}/flashcards/attempt`, {
           method: "POST",
           headers,
           body: JSON.stringify({

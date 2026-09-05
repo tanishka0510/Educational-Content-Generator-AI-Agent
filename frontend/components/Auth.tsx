@@ -21,7 +21,8 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
     setError("");
     setLoading(true);
 
-    const baseUrl = "http://127.0.0.1:8000";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     const endpoint = isLogin ? `${baseUrl}/auth/login` : `${baseUrl}/auth/signup`;
     const payload = isLogin
       ? { email, password }

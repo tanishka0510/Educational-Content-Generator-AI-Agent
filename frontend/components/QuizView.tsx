@@ -19,6 +19,9 @@ interface QuizData {
   total_questions: number;
 }
 
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 interface AnswerRecord {
   question: string;
   selected_answer: string;
@@ -112,7 +115,7 @@ export default function QuizView({
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/quiz/history?subject=${subject}`, { headers });
+      const res = await fetch(`${baseUrl}/quiz/history?subject=${subject}`, { headers });
       if (res.ok) {
         const data = await res.json();
         setHistory(data);
@@ -183,7 +186,7 @@ export default function QuizView({
       };
       console.debug("Quiz generation payload", payload);
 
-      const response = await fetch("http://127.0.0.1:8000/quiz/generate", {
+      const response = await fetch(`${baseUrl}/quiz/generate`, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
@@ -268,7 +271,7 @@ export default function QuizView({
 
       try {
         const finalScore = score + (selectedAnswer === quizData.questions[currentQuestionIndex].correct_answer ? 1 : 0);
-        await fetch("http://127.0.0.1:8000/quiz/submit", {
+        await fetch(`${baseUrl}/quiz/submit`, {
           method: "POST",
           headers,
           body: JSON.stringify({

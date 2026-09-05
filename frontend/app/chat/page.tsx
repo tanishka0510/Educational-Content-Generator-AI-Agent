@@ -14,7 +14,8 @@ interface Message {
   content: string;
   comparison_table?: ComparisonTableData;
 }
-
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -53,7 +54,7 @@ export default function ChatPage() {
       // ------------------------------------------
 
       const response = await fetch(
-        "http://127.0.0.1:8000/process-content",
+        `${BACKEND_URL}/process-content`,
         {
           method: "POST",
 

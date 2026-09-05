@@ -103,7 +103,7 @@ const STORAGE_KEY =
 // =====================================================
 
 const BACKEND_URL =
-  "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const PROCESS_CONTENT_URL =
   `${BACKEND_URL}/process-content`;
@@ -112,7 +112,7 @@ const UPLOAD_URL =
   `${BACKEND_URL}/upload/`;
 
 const MULTIMEDIA_URL =
-  "http://127.0.0.1:8003";
+  process.env.NEXT_PUBLIC_MULTIMEDIA_URL || "http://127.0.0.1:8003";
 
 // =====================================================
 // Subject Names
@@ -293,7 +293,7 @@ export default function ChatPage({
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      const res = await fetch("http://127.0.0.1:8000/upload/documents", { headers });
+      const res = await fetch(`${BACKEND_URL}/upload/documents`, { headers });
       if (res.ok) {
         const docs = await res.json();
         setSubjectDocuments(docs);
@@ -322,7 +322,7 @@ export default function ChatPage({
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       try {
-        const response = await fetch("http://127.0.0.1:8000/chats", { headers });
+        const response = await fetch(`${BACKEND_URL}/chats`, { headers });
         if (response.status === 401 && onAuthFailure) {
           onAuthFailure();
           return;
@@ -360,7 +360,7 @@ export default function ChatPage({
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      await fetch(`http://127.0.0.1:8000/chats/${chatId}`, {
+      await fetch(`${BACKEND_URL}/chats/${chatId}`, {
         method: "DELETE",
         headers,
       });
@@ -802,7 +802,7 @@ export default function ChatPage({
         formData.append("document_name", uploadedDocName);
       }
 
-      const response = await fetch("http://127.0.0.1:8000/voice/qa", {
+      const response = await fetch(`${BACKEND_URL}/voice/qa`, {
         method: "POST",
         headers,
         body: formData,

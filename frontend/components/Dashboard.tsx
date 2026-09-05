@@ -16,6 +16,10 @@ import {
 import { Line, Doughnut, Bar } from "react-chartjs-2";
 import StudyPlanModal, { StudyPlanData } from "./StudyPlanModal";
 
+
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -163,7 +167,7 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
     const token = localStorage.getItem("authToken");
     if (!confirm("Are you sure you want to delete this document from your repository?")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/upload/documents/${docId}`, {
+      const res = await fetch(`${baseUrl}/upload/documents/${docId}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -185,7 +189,8 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
       }
 
       const headers = { Authorization: `Bearer ${token}` };
-      const baseUrl = "http://127.0.0.1:8000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
       try {
         const [quizRes, cardRes, chatRes, docRes, attemptRes, analyticsRes] = await Promise.all([
@@ -246,7 +251,7 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
     if (!token) return;
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/reports/${format}`, {
+      const response = await fetch(`${baseUrl}/reports/${format}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -279,7 +284,7 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
       setIsStudyPlanLoading(true);
       const token = localStorage.getItem("authToken");
       try {
-        const response = await fetch("http://127.0.0.1:8000/reports/study-plan", {
+        const response = await fetch(`${baseUrl}/reports/study-plan`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (response.ok) {
@@ -300,7 +305,7 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
     const token = localStorage.getItem("authToken");
     setIsDownloadingStudyPlanPdf(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/reports/study-plan/pdf", {
+      const response = await fetch(`${baseUrl}/reports/study-plan/pdf`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 

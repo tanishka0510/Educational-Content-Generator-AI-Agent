@@ -23,8 +23,13 @@ from database.schemas import UploadedDocumentCreate, UploadedDocumentResponse
 from utils.security import get_optional_user
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
+import os
 
-CONTENT_PROCESSING_URL = "http://localhost:8001"
+CONTENT_PROCESSING_URL = os.getenv(
+    "CONTENT_PROCESSING_URL",
+    "http://localhost:8001"
+)
+
 TIMEOUT = 120.0
 
 

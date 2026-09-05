@@ -13,7 +13,7 @@ from app.api.retrieve import router as retrieve_router
 from app.api.search import router as search_router
 
 from app.core.config import settings
-
+import os
 from app.schemas.query_schema import QueryRequest
 from app.schemas.query_response import QueryResponse
 from app.schemas.processed_content_response import (
@@ -30,7 +30,15 @@ from app.services.subject_validator import (
     detect_question_subject,
     get_subject_validation_message,
 )
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:3000"
+)
 
+ORCHESTRATOR_URL = os.getenv(
+    "ORCHESTRATOR_URL",
+    "http://localhost:8000"
+)
 # =====================================================
 # Create FastAPI Application
 # =====================================================
@@ -53,14 +61,14 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
+        FRONTEND_URL,
+        ORCHESTRATOR_URL,
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
 
     allow_credentials=True,
-
     allow_methods=["*"],
-
     allow_headers=["*"],
 )
 
@@ -234,4 +242,9 @@ def process(request: QueryRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8001"))
+    )

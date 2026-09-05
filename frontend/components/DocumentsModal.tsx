@@ -15,6 +15,10 @@ export interface UploadedDocument {
   created_at: string;
 }
 
+
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 interface DocumentsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,7 +45,7 @@ export default function DocumentsModal({
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/upload/documents", { headers });
+      const res = await fetch(`${baseUrl}/upload/documents`, { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -75,7 +79,7 @@ export default function DocumentsModal({
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/upload/documents/${docId}`, {
+      const res = await fetch(`${baseUrl}/upload/documents/${docId}`, {
         method: "DELETE",
         headers,
       });
