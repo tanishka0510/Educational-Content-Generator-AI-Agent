@@ -1,15 +1,52 @@
+# ==============================
 # Python
+# ==============================
 venv/
 .venv/
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
+
+# ==============================
+# Databases
+# ==============================
+*.db
+*.sqlite
 *.sqlite3
 *.db-journal
-*.db
-# Knowledge base
+
+# ==============================
+# Environment variables & secrets
+# ==============================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ==============================
+# Knowledge bases / generated data
+# ==============================
 **/knowledge_base/
+
+# ==============================
+# Logs
+# ==============================
+logs/
+**/logs/
+*.log
+
+# ==============================
+# Testing
+# ==============================
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+htmlcov/
+
+# ==============================
 # Node / Frontend
+# ==============================
 node_modules/
 .next/
 out/
@@ -17,16 +54,21 @@ build/
 .dist/
 dist/
 *.tsbuildinfo
-Content-Processing-Agent/knowledge_base/
-# Environment variables & secrets
-.env
-.env.local
-.env.*.local
 
-# Operating System & Editors
-.DS_Store
-Thumbs.db
+# ==============================
+# IDE
+# ==============================
 .vscode/
 .idea/
+
+# ==============================
+# Operating System
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Miscellaneous
+# ==============================
 *.zip
 *.mp3
