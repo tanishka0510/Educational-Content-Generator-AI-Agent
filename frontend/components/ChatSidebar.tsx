@@ -74,56 +74,42 @@ export default function ChatSidebar({
 
   return (
 
-    <aside className="flex w-72 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950">
-
+    <aside className="flex w-72 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
       {/* =================================================
           SIDEBAR HEADER
       ================================================= */}
-
-      <div className="border-b border-slate-800 p-4">
-
+      <div className="border-b border-slate-200 p-4">
         {/* Back Button */}
-
         <button
           onClick={onBack}
-          className="mb-4 flex items-center gap-2 text-sm text-slate-500 transition hover:text-white"
+          className="mb-4 flex items-center gap-2 text-xs font-medium text-slate-500 transition hover:text-slate-900"
         >
-
-          <span>
-            ←
-          </span>
-
-          <span>
-            Home
-          </span>
-
+          <span>←</span>
+          <span>Workspace</span>
         </button>
 
-        {/* Application Name */}
-
-        <div className="mb-4">
-
-          <h2 className="font-semibold text-white">
-            Educational AI
-          </h2>
-
+        {/* Application Name with Gold Emblem */}
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#C59B27] bg-amber-50 text-[#C59B27] font-serif font-bold text-xs shadow-sm">
+            SL
+          </div>
+          <div>
+            <h2 className="font-serif font-bold text-slate-900 text-sm tracking-wide">
+              SmartLearn
+            </h2>
+            <p className="text-[10px] text-[#C59B27] font-semibold uppercase tracking-wider">
+              Tutor Assistant
+            </p>
+          </div>
         </div>
 
-        {/* New Chat */}
-
+        {/* New Chat Button (Warm Gold) */}
         <button
           onClick={onNewChat}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#C59B27] hover:bg-[#B38A1F] px-4 py-2.5 text-sm font-semibold text-white transition shadow-sm hover:shadow-md active:scale-98"
         >
-
-          <span className="text-lg">
-            +
-          </span>
-
-          <span>
-            New Chat
-          </span>
-
+          <span className="text-base font-bold">+</span>
+          <span>New Chat</span>
         </button>
 
         {/* Previous Documents Button */}
@@ -131,14 +117,14 @@ export default function ChatSidebar({
           <button
             type="button"
             onClick={onOpenDocuments}
-            className="mt-2.5 flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5 text-xs font-medium text-slate-300 transition hover:border-sky-500/50 hover:bg-slate-800 hover:text-white group"
+            className="mt-2.5 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 transition hover:border-[#C59B27]/40 hover:bg-slate-100 hover:text-slate-900 group shadow-2xs"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base group-hover:scale-110 transition-transform">📁</span>
+              <span className="text-sm group-hover:scale-110 transition-transform">📁</span>
               <span className="truncate">Previous Documents</span>
             </div>
             {documentCount > 0 && (
-              <span className="shrink-0 rounded-full bg-sky-950 px-2 py-0.5 text-[10px] font-semibold text-sky-400 border border-sky-800/60">
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-[#9A7318] border border-[#C59B27]/30">
                 {documentCount}
               </span>
             )}
@@ -147,10 +133,10 @@ export default function ChatSidebar({
 
         {/* Active Document Indicator Pill */}
         {activeDocumentName && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-sky-800/40 bg-sky-950/40 px-2.5 py-1.5 text-xs text-sky-300 animate-in fade-in duration-150">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#C59B27]/30 bg-amber-50/90 px-2.5 py-1.5 text-xs text-[#9A7318] animate-in fade-in duration-150">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="shrink-0">📄</span>
-              <span className="truncate text-[11px] font-medium" title={activeDocumentName}>
+              <span className="truncate text-[11px] font-medium text-slate-900" title={activeDocumentName}>
                 {activeDocumentName}
               </span>
             </div>
@@ -161,56 +147,31 @@ export default function ChatSidebar({
                   e.stopPropagation();
                   onUnloadDocument();
                 }}
-                className="shrink-0 text-[10px] text-sky-400 hover:text-rose-300 transition underline cursor-pointer"
+                className="shrink-0 text-[10px] text-rose-600 hover:text-rose-700 transition underline cursor-pointer font-medium"
               >
                 Unload
               </button>
             )}
           </div>
         )}
-
       </div>
 
       {/* =================================================
           CHAT HISTORY
       ================================================= */}
-
       <div className="flex-1 overflow-y-auto p-3">
-
-        <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
-
-          Chats
-
+        <div className="mb-2.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          Saved Conversations
         </div>
 
-        {/* =================================================
-            No Chats
-        ================================================= */}
-
+        {/* No Chats */}
         {subjectChats.length === 0 ? (
-
           <div className="px-3 py-8 text-center">
-
-            <div className="mb-3 text-2xl">
-              💬
-            </div>
-
-            <p className="text-sm text-slate-500">
-              No chats yet
-            </p>
-
-            <p className="mt-1 text-xs text-slate-600">
-              Start a new conversation.
-            </p>
-
+            <div className="mb-3 text-2xl">💬</div>
+            <p className="text-xs text-slate-500 font-medium">No chats yet</p>
+            <p className="mt-1 text-[11px] text-slate-400">Start a new conversation.</p>
           </div>
-
         ) : (
-
-          // =================================================
-          // Chat List
-          // =================================================
-
           <div className="space-y-1">
             {subjectChats.map((chat) => {
               const formattedDate = chat.updatedAt
@@ -224,18 +185,18 @@ export default function ChatSidebar({
                 <div
                   key={chat.id}
                   onClick={() => onSelectChat(chat)}
-                  className={`group relative flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition ${
+                  className={`group relative flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 transition ${
                     activeChatId === chat.id
-                      ? "bg-slate-800 text-white"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                      ? "bg-amber-50/80 text-slate-900 border-l-4 border-[#C59B27] shadow-xs font-semibold"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
                   <div className="min-w-0 flex-1 pr-2">
                     <div className="truncate text-sm font-medium">
                       {chat.title}
                     </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
-                      <span>{chat.messages.length} messages</span>
+                    <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400 font-normal">
+                      <span>{chat.messages.length} msgs</span>
                       {formattedDate && (
                         <>
                           <span>•</span>
@@ -255,7 +216,7 @@ export default function ChatSidebar({
                         }
                       }}
                       title="Delete chat session"
-                      className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-rose-950/60 hover:text-rose-400 group-hover:opacity-100"
+                      className="rounded p-1 text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -275,12 +236,8 @@ export default function ChatSidebar({
               );
             })}
           </div>
-
-
         )}
-
       </div>
-
     </aside>
   );
 }

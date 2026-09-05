@@ -190,10 +190,10 @@ export default function ChatMessage({
       }`}
     >
       <div
-        className={`max-w-3xl rounded-2xl px-5 py-4 ${
+        className={`max-w-3xl rounded-2xl px-5 py-4 transition shadow-md ${
           isUser
-            ? "bg-blue-600 text-white"
-            : "bg-slate-900 text-slate-200"
+            ? "bg-[#C59B27] text-white font-medium border border-[#B38A1F]"
+            : "bg-white text-slate-800 border border-slate-200/80"
         }`}
       >
         {/* Message text */}
@@ -204,31 +204,31 @@ export default function ChatMessage({
         )}
 
         {!isUser && generatedImage && (
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-700">
-            <div className="border-b border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-400">Generated Image</div>
-            <img src={generatedImage} alt="Educational illustration" className="max-h-96 w-full bg-slate-950 object-contain p-2" />
-            <div className="border-t border-slate-700 bg-slate-900 px-3 py-2">
-              <button type="button" onClick={() => handleDownloadImage(generatedImage)} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white">
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-2xs">
+            <div className="border-b border-slate-200 bg-slate-100/70 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[#C59B27]">Generated Diagram</div>
+            <img src={generatedImage} alt="Educational illustration" className="max-h-96 w-full bg-white object-contain p-2" />
+            <div className="border-t border-slate-200 bg-slate-50 px-3 py-2">
+              <button type="button" onClick={() => handleDownloadImage(generatedImage)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 shadow-2xs">
                 Download Image
               </button>
             </div>
           </div>
         )}
 
-        {!isUser && imageError && <p className="mt-3 text-sm text-rose-400">{imageError}</p>}
+        {!isUser && imageError && <p className="mt-3 text-sm text-rose-500 font-medium">{imageError}</p>}
 
-        {!isUser && voiceError && <p className="mt-3 text-sm text-rose-400">{voiceError}</p>}
+        {!isUser && voiceError && <p className="mt-3 text-sm text-rose-500 font-medium">{voiceError}</p>}
 
         {/* Code */}
         {!isUser && message.code && (
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
-            <div className="flex items-center justify-between border-b border-slate-700 bg-slate-900 px-4 py-2">
-              <span className="text-xs font-medium text-slate-400">
-                Code
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-300 bg-slate-900 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-800 px-4 py-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#E5C365]">
+                Code Reference
               </span>
             </div>
 
-            <pre className="overflow-x-auto p-4 text-sm leading-6 text-slate-200">
+            <pre className="overflow-x-auto p-4 text-sm leading-6 text-slate-100 font-mono">
               <code>{message.code}</code>
             </pre>
           </div>
@@ -244,17 +244,17 @@ export default function ChatMessage({
         )}
 
         {!isUser && message.intent !== "out_of_scope" && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={handleGenerateQuiz} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" title="Generate a quiz from this topic">
+          <div className="mt-4 flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+            <button type="button" onClick={handleGenerateQuiz} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-[#C59B27]/40 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-[#C59B27] transition hover:bg-[#C59B27] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs" title="Generate a quiz from this topic">
               📝 Quiz
             </button>
-            <button type="button" onClick={handleGenerateFlashcards} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-purple-500 bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50" title="Generate flashcards from this topic">
+            <button type="button" onClick={handleGenerateFlashcards} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-[#C59B27]/40 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-[#C59B27] transition hover:bg-[#C59B27] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs" title="Generate flashcards from this topic">
               🎴 Flashcards
             </button>
-            <button type="button" onClick={handleGenerateVoice} disabled={imageGenerating} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50" title="Listen to this response">
+            <button type="button" onClick={handleGenerateVoice} disabled={imageGenerating} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs" title="Listen to this response">
               {voiceState === "playing" ? "⏸ Playing" : voiceState === "paused" ? "▶️ Paused" : "🔊 Listen"}
             </button>
-            <button type="button" onClick={handleGenerateImage} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50" title="Generate educational diagram">
+            <button type="button" onClick={handleGenerateImage} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs" title="Generate educational diagram">
               {imageGenerating ? "⏳ Generating..." : "🖼️ Image"}
             </button>
           </div>

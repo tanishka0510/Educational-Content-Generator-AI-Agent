@@ -440,20 +440,20 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-        <p className="text-lg text-slate-400">Loading student analytics & progress reports...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] text-slate-800 font-sans">
+        <p className="text-lg text-slate-500 font-medium">Loading student analytics & progress reports...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] text-slate-800 font-sans">
         <div className="text-center">
-          <p className="text-lg text-rose-500">{error}</p>
+          <p className="text-lg text-rose-600 font-medium">{error}</p>
           <button
             onClick={onBack}
-            className="mt-6 rounded-lg bg-white px-5 py-2 text-sm font-semibold text-black"
+            className="mt-6 rounded-lg bg-[#C59B27] px-5 py-2 text-sm font-semibold text-white shadow-sm"
           >
             Back to Home
           </button>
@@ -463,22 +463,22 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+    <main className="min-h-screen bg-[#F8FAFC] px-6 py-12 text-slate-900 font-sans">
       <div className="mx-auto max-w-6xl">
         
         {/* Top Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-8">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-4xl font-bold tracking-tight">Learning Dashboard</h1>
+              <h1 className="font-serif text-4xl font-normal tracking-tight text-slate-900">Academic Performance Dashboard</h1>
               {analytics?.overall_progress_status && (
-                <span className="rounded-full border border-sky-600 bg-sky-950/70 px-3 py-1 text-xs font-semibold text-sky-300">
+                <span className="rounded-full border border-[#C59B27]/40 bg-amber-50 px-3.5 py-1 text-xs font-semibold text-[#C59B27]">
                   {analytics.overall_progress_status}
                 </span>
               )}
             </div>
-            <p className="mt-2 text-sm text-slate-400">
-              Logged in as <span className="text-slate-200 font-medium">{analytics?.user_name}</span> ({analytics?.student_email})
+            <p className="mt-2 text-sm text-slate-600">
+              Logged in as <span className="text-[#C59B27] font-semibold">{analytics?.user_name}</span> ({analytics?.student_email})
               {analytics?.report_date && ` • Report Generated: ${analytics.report_date}`}
             </p>
           </div>
@@ -486,26 +486,26 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
           <div className="flex items-center gap-3">
             <button
               onClick={openStudyPlan}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-violet-500 transition"
+              className="flex items-center gap-2 rounded-xl bg-[#C59B27] px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#B38A1F] transition"
             >
               <span>📅</span>
               <span>Weekly Study Plan</span>
             </button>
             <button
               onClick={() => downloadReport("csv")}
-              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-medium hover:bg-slate-800 transition"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#C59B27]/40 hover:bg-slate-50 transition shadow-2xs"
             >
               📊 Export CSV
             </button>
             <button
               onClick={() => downloadReport("pdf")}
-              className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-200 transition"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#C59B27]/40 hover:bg-slate-50 transition shadow-2xs"
             >
               📄 Export PDF
             </button>
             <button
               onClick={onBack}
-              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-medium hover:bg-slate-800 transition"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#C59B27]/40 hover:bg-slate-50 transition shadow-2xs"
             >
               ← Back
             </button>
@@ -515,29 +515,29 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
         {/* ==========================================================
             Section: Personalized Weekly Study Plan Banner
         ========================================================== */}
-        <div className="mt-8 rounded-2xl border border-indigo-900/60 bg-gradient-to-r from-indigo-950/50 via-slate-900/80 to-purple-950/50 p-6 shadow-xl relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-60 h-60 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="mt-8 rounded-2xl border border-[#C59B27]/30 bg-gradient-to-r from-amber-50/90 via-white to-amber-50/70 p-6 shadow-md relative overflow-hidden">
+          <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-60 h-60 bg-[#C59B27]/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-lg">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 border border-[#C59B27]/40 text-lg text-[#C59B27]">
                   📅
                 </span>
-                <span className="rounded-full border border-indigo-500/40 bg-indigo-950/80 px-3 py-0.5 text-xs font-bold text-indigo-300">
+                <span className="rounded-full border border-[#C59B27]/40 bg-amber-50 px-3 py-0.5 text-xs font-bold text-[#C59B27]">
                   AI Academic Coach
                 </span>
               </div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="font-serif text-2xl font-medium text-slate-900">
                 Personalized Weekly Study Plan & Remediation Schedule
               </h2>
-              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
+              <p className="text-sm text-slate-600 max-w-2xl leading-relaxed">
                 A custom 7-day learning routine tailored to your recent quiz errors, difficult flashcards, and knowledge gaps. Includes subject-wise topic diagnosis and actionable improvement strategies.
               </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={openStudyPlan}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-500 hover:to-violet-500 transition"
+                className="flex items-center gap-2 rounded-xl bg-[#C59B27] px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-[#B38A1F] transition"
               >
                 <span>🔍</span>
                 <span>View Study Plan</span>
@@ -545,7 +545,7 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
               <button
                 onClick={downloadStudyPlanPdf}
                 disabled={isDownloadingStudyPlanPdf}
-                className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition"
+                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-[#C59B27]/40 hover:bg-slate-50 transition shadow-2xs"
               >
                 <span>📄</span>
                 <span>{isDownloadingStudyPlanPdf ? "Exporting..." : "Download Plan (PDF)"}</span>
@@ -556,41 +556,41 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
 
         {/* Metrics Grid */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Quizzes Taken</p>
-            <h3 className="mt-2 text-3xl font-bold">{totalQuizzes}</h3>
-            <p className="mt-1 text-xs text-slate-500">{analytics?.total_questions_attempted || 0} questions answered</p>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:border-[#C59B27]/40 transition">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Quizzes Taken</p>
+            <h3 className="mt-2 font-serif text-3xl font-bold text-slate-900">{totalQuizzes}</h3>
+            <p className="mt-1 text-xs text-slate-400">{analytics?.total_questions_attempted || 0} questions answered</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Average Quiz Score</p>
-            <h3 className="mt-2 text-3xl font-bold">{averageScore}%</h3>
-            <p className="mt-1 text-xs text-slate-500">{analytics?.total_questions_correct || 0} correct answers</p>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:border-[#C59B27]/40 transition">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Average Quiz Score</p>
+            <h3 className="mt-2 font-serif text-3xl font-bold text-[#C59B27]">{averageScore}%</h3>
+            <p className="mt-1 text-xs text-slate-400">{analytics?.total_questions_correct || 0} correct answers</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Score Progression Growth</p>
-            <h3 className="mt-2 text-3xl font-bold text-sky-400">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:border-[#C59B27]/40 transition">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Score Progression Growth</p>
+            <h3 className="mt-2 font-serif text-3xl font-bold text-emerald-600">
               {analytics?.comparison ? `${analytics.comparison.growth_delta > 0 ? "+" : ""}${analytics.comparison.growth_delta}%` : "0%"}
             </h3>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-400">
               Baseline {analytics?.comparison?.baseline_avg || 0}% → Recent {analytics?.comparison?.recent_avg || 0}%
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Concepts Remediated</p>
-            <h3 className="mt-2 text-3xl font-bold text-emerald-400">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:border-[#C59B27]/40 transition">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Concepts Remediated</p>
+            <h3 className="mt-2 font-serif text-3xl font-bold text-[#C59B27]">
               {analytics?.remediated_questions?.length || 0}
             </h3>
-            <p className="mt-1 text-xs text-slate-500">Mistakes turned into correct answers</p>
+            <p className="mt-1 text-xs text-slate-400">Mistakes turned into correct answers</p>
           </div>
         </div>
 
         {/* Narrative Banner */}
         {analytics?.status_narrative && (
-          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-300">
-            <span className="font-semibold text-white mr-2">Overall Progress Status:</span>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-2xs">
+            <span className="font-semibold text-slate-900 mr-2">Overall Progress Status:</span>
             {analytics.status_narrative}
           </div>
         )}
@@ -601,8 +601,8 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
         <div className="mt-12">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Learning Progress by Subject</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="font-serif text-2xl font-normal tracking-tight text-slate-900">Learning Progress by Subject</h2>
+              <p className="text-sm text-slate-600">
                 Measures progress in each subject by comparing student test attempts and answer changes over time
               </p>
             </div>
@@ -613,55 +613,55 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
               {Object.entries(analytics.subject_learning_progress)
                 .filter(([, prog]) => prog.quizzes_taken > 0)
                 .map(([subKey, prog]) => (
-                  <div key={subKey} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+                  <div key={subKey} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-[#C59B27]/40 transition">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-white">{SUBJECT_NAMES[subKey] || subKey}</h3>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${prog.delta > 0 ? "bg-emerald-950 text-emerald-300 border border-emerald-800" : prog.delta === 0 ? "bg-slate-800 text-slate-300" : "bg-rose-950 text-rose-300 border border-rose-800"}`}>
+                      <h3 className="font-semibold text-slate-900">{SUBJECT_NAMES[subKey] || subKey}</h3>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${prog.delta > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : prog.delta === 0 ? "bg-slate-100 text-slate-600" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
                         {prog.delta > 0 ? `+${prog.delta}%` : `${prog.delta}%`}
                       </span>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-3">
+                    <div className="mt-4 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-3">
                       <div>
                         <span>Initial Score: </span>
-                        <b className="text-slate-200">{prog.initial_score}%</b>
+                        <b className="text-[#C59B27]">{prog.initial_score}%</b>
                       </div>
                       <div>
                         <span>Latest Score: </span>
-                        <b className="text-slate-200">{prog.latest_score}%</b>
+                        <b className="text-[#C59B27]">{prog.latest_score}%</b>
                       </div>
                       <div>
                         <span>Remediated: </span>
-                        <b className="text-emerald-400">{prog.remediated_count}</b>
+                        <b className="text-emerald-600">{prog.remediated_count}</b>
                       </div>
                     </div>
 
-                    <p className="mt-3 text-xs leading-5 text-slate-300">
+                    <p className="mt-3 text-xs leading-5 text-slate-600">
                       {prog.description}
                     </p>
                   </div>
                 ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-8 text-center text-slate-400 text-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500 text-sm shadow-2xs">
               Complete multiple quizzes in your subjects to generate answer comparison and learning progress curves.
             </div>
           )}
 
           {/* Remediated Question Log */}
           {analytics?.remediated_questions && analytics.remediated_questions.length > 0 && (
-            <div className="mt-6 rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-5">
-              <h3 className="font-semibold text-emerald-400 text-sm mb-3">
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-2xs">
+              <h3 className="font-semibold text-emerald-800 text-sm mb-3">
                 🎯 Concepts Successfully Remediated (Initial Error → Subsequent Correct Answer):
               </h3>
               <div className="space-y-2">
                 {analytics.remediated_questions.map((rq, idx) => (
-                  <div key={idx} className="rounded-xl border border-slate-800 bg-slate-900/80 p-3 text-xs text-slate-300">
-                    <p className="font-medium text-white">
+                  <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-2xs">
+                    <p className="font-medium text-slate-900">
                       [{SUBJECT_NAMES[rq.subject] || rq.subject}] {rq.question}
                     </p>
-                    <p className="mt-1 text-slate-400">
-                      Initially answered incorrectly on <span className="text-rose-400">{rq.initial_date}</span>, then mastered and answered correctly on <span className="text-emerald-400 font-medium">{rq.remediated_date}</span>.
+                    <p className="mt-1 text-slate-600">
+                      Initially answered incorrectly on <span className="text-rose-600">{rq.initial_date}</span>, then mastered and answered correctly on <span className="text-emerald-700 font-medium">{rq.remediated_date}</span>.
                     </p>
                   </div>
                 ))}
@@ -676,8 +676,8 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
         {totalQuizzes > 0 && (
           <div className="mt-12 grid gap-6 lg:grid-cols-3">
             {/* Score Trend */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold mb-4">Quiz Score Progression Trend</h3>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-2">
+              <h3 className="font-serif text-lg font-normal text-slate-900 mb-4">Quiz Score Progression Trend</h3>
               <div className="h-72">
                 <Line
                   data={quizTrendData}
@@ -693,8 +693,8 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
             </div>
 
             {/* Doughnut Chart */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
-              <h3 className="text-lg font-semibold mb-4">Quizzes by Subject</h3>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <h3 className="font-serif text-lg font-normal text-slate-900 mb-4">Quizzes by Subject</h3>
               <div className="h-72 flex items-center justify-center">
                 <Doughnut
                   data={doughnutData}
@@ -704,8 +704,8 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
             </div>
 
             {/* Subject Activities Bar Chart */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 lg:col-span-3">
-              <h3 className="text-lg font-semibold mb-4">Subject Engagement Breakdown</h3>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-3">
+              <h3 className="font-serif text-lg font-normal text-slate-900 mb-4">Subject Engagement Breakdown</h3>
               <div className="h-80">
                 <Bar
                   data={barData}
@@ -727,16 +727,16 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
         ========================================================== */}
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {/* Uploaded Documents Repository */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <h3 className="font-serif text-lg font-normal text-slate-900 flex items-center gap-2">
                 <span>📁</span> Uploaded Study Materials ({documents.length})
               </h3>
-              <span className="text-xs text-slate-500">Stored in Database</span>
+              <span className="text-xs text-[#C59B27] font-semibold">Stored in Database</span>
             </div>
 
             {documents.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
+              <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-400">
                 <span className="text-2xl block mb-2">📄</span>
                 No documents uploaded yet. Upload lecture notes or textbooks in Chat to see them saved here!
               </div>
@@ -751,16 +751,16 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
                   return (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs transition hover:border-slate-700"
+                      className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs transition hover:border-[#C59B27]/40"
                     >
                       <div className="min-w-0 flex-1 pr-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white truncate">{doc.filename}</span>
-                          <span className="rounded bg-sky-950 px-1.5 py-0.5 text-[10px] font-bold text-sky-400 border border-sky-800/50">
+                          <span className="font-semibold text-slate-900 truncate">{doc.filename}</span>
+                          <span className="rounded border border-[#C59B27]/40 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-[#C59B27]">
                             {doc.subject}
                           </span>
                         </div>
-                        <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                        <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
                           <span>{sizeKb > 0 ? `${sizeKb} KB` : "Document"}</span>
                           <span>•</span>
                           <span>{doc.chunks_count} chunks indexed</span>
@@ -772,7 +772,7 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
                         type="button"
                         onClick={() => handleDeleteDoc(doc.id)}
                         title="Delete document"
-                        className="rounded p-1 text-slate-500 transition hover:bg-rose-950/60 hover:text-rose-400"
+                        className="rounded p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -786,16 +786,16 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
           </div>
 
           {/* Flashcard Revision Sessions Log */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <h3 className="font-serif text-lg font-normal text-slate-900 flex items-center gap-2">
                 <span>🗂️</span> Flashcard Study Sessions ({deckAttempts.length})
               </h3>
-              <span className="text-xs text-slate-500">Attempt History</span>
+              <span className="text-xs text-[#C59B27] font-semibold">Attempt History</span>
             </div>
 
             {deckAttempts.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
+              <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-400">
                 <span className="text-2xl block mb-2">🃏</span>
                 No flashcard revision sessions logged yet. Complete a flashcard deck to track your reviews!
               </div>
@@ -811,22 +811,22 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
                   return (
                     <div
                       key={att.id || idx}
-                      className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs"
+                      className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs"
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white">{att.topic || "General Topic"}</span>
-                          <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300">
+                          <span className="font-semibold text-slate-900">{att.topic || "General Topic"}</span>
+                          <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-600">
                             {att.subject}
                           </span>
-                          <span className="text-[10px] uppercase text-slate-500">{att.difficulty}</span>
+                          <span className="text-[10px] uppercase text-slate-400">{att.difficulty}</span>
                         </div>
-                        <p className="mt-1 text-[11px] text-slate-500">{dateStr} • {att.cards_reviewed} cards reviewed</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{dateStr} • {att.cards_reviewed} cards reviewed</p>
                       </div>
                       <div className="flex items-center gap-2 text-[11px]">
-                        <span className="rounded bg-emerald-950/50 px-2 py-0.5 text-emerald-400 font-semibold border border-emerald-900/40">🟢 {att.easy_count}</span>
-                        <span className="rounded bg-yellow-950/50 px-2 py-0.5 text-yellow-400 font-semibold border border-yellow-900/40">🟡 {att.medium_count}</span>
-                        <span className="rounded bg-rose-950/50 px-2 py-0.5 text-rose-400 font-semibold border border-rose-900/40">🔴 {att.hard_count}</span>
+                        <span className="rounded bg-emerald-50 px-2 py-0.5 text-emerald-700 font-semibold border border-emerald-200">🟢 {att.easy_count}</span>
+                        <span className="rounded bg-amber-50 px-2 py-0.5 text-amber-800 font-semibold border border-amber-200">🟡 {att.medium_count}</span>
+                        <span className="rounded bg-rose-50 px-2 py-0.5 text-rose-700 font-semibold border border-rose-200">🔴 {att.hard_count}</span>
                       </div>
                     </div>
                   );
@@ -842,14 +842,14 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
         <div className="mt-12 grid gap-6 md:grid-cols-2">
 
           {/* Strengths */}
-          <div className="rounded-2xl border border-emerald-900/60 bg-slate-900/60 p-6">
-            <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h3 className="font-serif text-lg font-normal text-emerald-700 flex items-center gap-2">
               <span>⭐</span> Key Academic Strengths
             </h3>
-            <ul className="mt-4 space-y-2.5 text-sm text-slate-300">
+            <ul className="mt-4 space-y-2.5 text-sm text-slate-700">
               {analytics?.strengths?.map((str, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-emerald-400 font-bold">•</span>
+                  <span className="text-emerald-600 font-bold">•</span>
                   <span>{str}</span>
                 </li>
               ))}
@@ -857,14 +857,14 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
           </div>
 
           {/* Areas for Improvement */}
-          <div className="rounded-2xl border border-amber-900/60 bg-slate-900/60 p-6">
-            <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h3 className="font-serif text-lg font-normal text-[#C59B27] flex items-center gap-2">
               <span>💡</span> Areas for Improvement
             </h3>
-            <ul className="mt-4 space-y-2.5 text-sm text-slate-300">
+            <ul className="mt-4 space-y-2.5 text-sm text-slate-700">
               {analytics?.areas_for_improvement?.map((area, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-amber-400 font-bold">•</span>
+                  <span className="text-[#C59B27] font-bold">•</span>
                   <span>{area}</span>
                 </li>
               ))}
@@ -877,14 +877,14 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
         ========================================================== */}
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           {/* Learning Goals */}
-          <div className="rounded-2xl border border-sky-900/60 bg-slate-900/60 p-6">
-            <h3 className="text-lg font-bold text-sky-400 flex items-center gap-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h3 className="font-serif text-lg font-normal text-[#C59B27] flex items-center gap-2">
               <span>🎯</span> Targeted Learning Goals
             </h3>
-            <ul className="mt-4 space-y-2.5 text-sm text-slate-300">
+            <ul className="mt-4 space-y-2.5 text-sm text-slate-700">
               {analytics?.learning_goals?.map((goal, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-sky-400 font-bold">•</span>
+                  <span className="text-[#C59B27] font-bold">•</span>
                   <span>{goal}</span>
                 </li>
               ))}
@@ -892,8 +892,8 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
           </div>
 
           {/* Achievements */}
-          <div className="rounded-2xl border border-purple-900/60 bg-slate-900/60 p-6">
-            <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h3 className="font-serif text-lg font-normal text-purple-700 flex items-center gap-2">
               <span>🏆</span> Achievement Badges
             </h3>
             <div className="mt-4 space-y-3">
@@ -902,19 +902,19 @@ export default function Dashboard({ onBack, onAuthFailure }: DashboardProps) {
                   key={idx}
                   className={`flex items-center justify-between rounded-xl p-3 border text-xs ${
                     ach.unlocked
-                      ? "border-purple-800 bg-purple-950/40 text-purple-200"
-                      : "border-slate-800 bg-slate-900/40 text-slate-500 opacity-60"
+                      ? "border-[#C59B27]/40 bg-amber-50/50 text-slate-800"
+                      : "border-slate-100 bg-slate-50 text-slate-400 opacity-60"
                   }`}
                 >
                   <div>
-                    <p className="font-semibold text-sm text-white">{ach.name}</p>
-                    <p className="text-slate-400 mt-0.5">{ach.description}</p>
+                    <p className="font-semibold text-sm text-slate-900">{ach.name}</p>
+                    <p className="text-slate-600 mt-0.5">{ach.description}</p>
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
                       ach.unlocked
-                        ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-                        : "bg-slate-800 text-slate-500"
+                        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-400"
                     }`}
                   >
                     {ach.unlocked ? "UNLOCKED" : "IN PROGRESS"}

@@ -21,15 +21,15 @@ export default function ComparisonTable({
   }
 
   return (
-    <div className="mt-5 overflow-hidden rounded-xl border border-slate-700">
+    <div className="mt-5 overflow-hidden rounded-xl border border-[#C59B27]/25 bg-[#0B1220]">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-800">
+            <tr className="border-b border-white/10 bg-[#0E1A30]">
               {table.columns.map((column, index) => (
                 <th
                   key={index}
-                  className="border-b border-slate-700 px-4 py-3 text-left font-semibold text-white"
+                  className="px-4 py-3 text-left font-serif font-semibold text-[#E5C365] tracking-wide"
                 >
                   {column}
                 </th>
@@ -41,12 +41,12 @@ export default function ComparisonTable({
             {table.rows.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="border-b border-slate-800 last:border-b-0"
+                className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition"
               >
                 {row.map((value, columnIndex) => (
                   <td
                     key={columnIndex}
-                    className="px-4 py-4 align-top leading-6 text-slate-300"
+                    className="px-4 py-3 align-top leading-6 text-slate-300"
                   >
                     {value}
                   </td>

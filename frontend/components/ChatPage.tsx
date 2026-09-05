@@ -297,17 +297,12 @@ export default function ChatPage({
       if (res.ok) {
         const docs = await res.json();
         setSubjectDocuments(docs);
-      }
-
-      const allRes = await fetch("http://127.0.0.1:8000/upload/documents", { headers });
-      if (allRes.ok) {
-        const allDocs = await allRes.json();
-        if (Array.isArray(allDocs)) {
-          setTotalDocumentCount(allDocs.length);
+        if (Array.isArray(docs)) {
+          setTotalDocumentCount(docs.length);
         }
       }
     } catch (err) {
-      console.error("Could not load documents:", err);
+      console.warn("Backend documents service not reached, using local state:", err);
     }
   };
 
@@ -340,7 +335,7 @@ export default function ChatPage({
           }
         }
       } catch (err) {
-        console.error("Failed to load chats from backend db, falling back to local storage:", err);
+        console.warn("Backend chats service not reached, falling back to local storage:", err);
       }
 
       try {
@@ -1077,7 +1072,7 @@ export default function ChatPage({
   // ===================================================
 
   return (
-    <main className="flex h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="flex h-screen overflow-hidden bg-[#F8FAFC] text-slate-800 font-sans">
 
       {/* =================================================
           SIDEBAR
@@ -1106,15 +1101,15 @@ export default function ChatPage({
             HEADER
         ================================================= */}
 
-        <header className="flex h-16 items-center justify-between border-b border-slate-800 px-6">
+        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-xs">
 
           <div>
-            <h1 className="font-semibold">
-              Educational AI Tutor
+            <h1 className="font-serif text-lg font-semibold tracking-wide text-slate-900">
+              Educational AI Academic Tutor
             </h1>
 
-            <p className="text-xs text-slate-500">
-              Ask questions from your study material
+            <p className="text-xs text-[#C59B27] font-medium">
+              Ask questions & synthesize knowledge from your course materials
             </p>
           </div>
 
@@ -1125,23 +1120,23 @@ export default function ChatPage({
         ================================================= */}
 
         {documentUploaded && (uploadedFile || uploadedDocName) && (
-          <div className="border-b border-slate-800 bg-slate-900/70 px-6 py-3">
+          <div className="border-b border-[#C59B27]/25 bg-amber-50/75 px-6 py-3 shadow-2xs">
 
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
 
               <div className="flex min-w-0 items-center gap-3">
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#C59B27]/30 bg-white text-[#C59B27] shadow-xs">
                   📄
                 </div>
 
                 <div className="min-w-0">
 
-                  <p className="text-xs font-medium text-slate-400">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#C59B27]">
                     Active Study Document {subjectDocuments.length > 1 ? `(${subjectDocuments.length} in DB)` : ""}
                   </p>
 
-                  <p className="truncate text-sm text-white font-medium">
+                  <p className="truncate text-sm text-slate-900 font-medium">
                     {uploadedFile?.name || uploadedDocName}
                   </p>
 
@@ -1151,14 +1146,14 @@ export default function ChatPage({
 
               <div className="flex shrink-0 items-center gap-2.5">
 
-                <span className="rounded-full border border-sky-800/60 bg-sky-950/50 px-3 py-1 text-xs text-sky-300">
+                <span className="rounded-full border border-[#C59B27]/40 bg-amber-100 px-3 py-1 text-xs font-medium text-[#9A7318]">
                   Document Mode (Saved)
                 </span>
 
                 <button
                   type="button"
                   onClick={() => setIsDocumentsModalOpen(true)}
-                  className="rounded-lg border border-sky-800/50 bg-sky-950/40 px-2.5 py-1 text-xs text-sky-300 transition hover:bg-sky-900/60 hover:text-white"
+                  className="rounded-lg border border-[#C59B27]/40 bg-white px-2.5 py-1 text-xs font-semibold text-[#9A7318] transition hover:bg-[#C59B27] hover:text-white shadow-2xs"
                   title="Switch to another previously uploaded document"
                 >
                   Switch Doc
@@ -1168,7 +1163,7 @@ export default function ChatPage({
                   type="button"
                   onClick={handleRemoveDocument}
                   disabled={uploading || loading}
-                  className="rounded-lg px-3 py-1.5 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40 shadow-2xs"
                 >
                   Unload
                 </button>
@@ -1186,11 +1181,11 @@ export default function ChatPage({
         ================================================= */}
 
         {uploadError && (
-          <div className="border-b border-red-900/40 bg-red-950/30 px-6 py-3">
+          <div className="border-b border-red-200 bg-red-50 px-6 py-3">
 
             <div className="mx-auto max-w-4xl">
 
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-red-600 font-medium">
                 {uploadError}
               </p>
 
@@ -1215,25 +1210,25 @@ export default function ChatPage({
 
               <div className="max-w-2xl text-center">
 
-                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl">
+                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C59B27]/40 bg-white text-2xl text-[#C59B27] shadow-md">
                   {documentUploaded
                     ? "📄"
                     : "💬"}
                 </div>
 
-                <h2 className="text-2xl font-semibold">
+                <h2 className="font-serif text-3xl font-medium tracking-tight text-slate-900">
 
                   {documentUploaded
                     ? "Ask about your document"
-                    : "What would you like to learn?"}
+                    : "What would you like to master today?"}
 
                 </h2>
 
-                <p className="mt-3 text-slate-500">
+                <p className="mt-3 text-slate-600">
 
                   {documentUploaded
-                    ? `Ask a question about ${uploadedFile?.name}. Answers will be generated from the uploaded document.`
-                    : "Ask a question about any topic."}
+                    ? `Ask a question about ${uploadedFile?.name}. Answers will be generated directly from the uploaded text.`
+                    : "Ask a question about any academic subject, concept, or algorithm."}
 
                 </p>
 
@@ -1251,9 +1246,9 @@ export default function ChatPage({
                       uploading ||
                       loading
                     }
-                    className="mt-7 rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    className="mt-7 rounded-xl border border-[#C59B27]/50 bg-white px-6 py-3 text-sm font-semibold text-[#C59B27] shadow-sm transition hover:border-[#C59B27] hover:bg-[#C59B27] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    📎 Upload Document
+                    📎 Upload Course Document
                   </button>
                 )}
 
@@ -1304,7 +1299,7 @@ export default function ChatPage({
               ================================================= */}
 
               {loading && (
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-slate-500 font-medium">
                   {documentUploaded
                     ? "Reading your document..."
                     : "Thinking..."}
@@ -1320,7 +1315,7 @@ export default function ChatPage({
             INPUT
         ================================================= */}
 
-        <div className="border-t border-slate-800 p-4">
+        <div className="border-t border-slate-200 bg-white p-4 shadow-sm">
 
           <div className="mx-auto max-w-4xl">
 
@@ -1331,24 +1326,6 @@ export default function ChatPage({
             <input
               ref={fileInputRef}
               type="file"
-
-              /*
-               * Content Processing Agent supports:
-               *
-               * Documents:
-               * PDF, DOCX, PPTX, TXT, MD
-               *
-               * Images:
-               * PNG, JPG, JPEG, BMP, TIFF
-               *
-               * Audio:
-               * WAV, MP3, M4A
-               *
-               * DOC/PPT are included as well because
-               * browsers may expose them depending on
-               * the installed application/file source.
-               */
-
               accept="
                 .pdf,
                 .doc,
@@ -1366,11 +1343,9 @@ export default function ChatPage({
                 .mp3,
                 .m4a
               "
-
               onChange={
                 handleFileUpload
               }
-
               className="hidden"
             />
 
@@ -1379,13 +1354,13 @@ export default function ChatPage({
             ================================================= */}
 
             {!isLoggedIn && (
-              <div className="mb-2.5 flex items-center justify-between rounded-xl border border-sky-800/60 bg-sky-950/40 px-4 py-2 text-xs text-sky-300">
+              <div className="mb-2.5 flex items-center justify-between rounded-xl border border-[#C59B27]/30 bg-amber-50/80 px-4 py-2 text-xs text-[#9A7318]">
                 <span>Free Trial: <b>{guestChatCount} of 10</b> questions asked</span>
                 {onRequireAuth && (
                   <button
                     type="button"
                     onClick={() => onRequireAuth("Sign up or log in to unlock unlimited chat questions, quizzes, and flashcards!")}
-                    className="font-medium underline hover:text-white transition"
+                    className="font-semibold text-[#C59B27] underline hover:text-slate-900 transition"
                   >
                     Sign In for Unlimited →
                   </button>
@@ -1393,20 +1368,20 @@ export default function ChatPage({
               </div>
             )}
 
-            <div className="flex items-end gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-2">
+            <div className="flex items-end gap-3 rounded-2xl border border-slate-300 bg-slate-50 p-2 focus-within:border-[#C59B27] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#C59B27]/30 shadow-xs transition">
 
               {!documentUploaded ? (
                 <button
                   type="button"
                   onClick={handleOpenFilePicker}
                   disabled={uploading || loading}
-                  className="shrink-0 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="shrink-0 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-[#C59B27] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   📎 Upload
                 </button>
               ) : (
                 <span
-                  className="shrink-0 px-3 py-2.5 text-sm text-slate-500"
+                  className="shrink-0 px-3 py-2.5 text-sm text-[#C59B27]"
                   title="Answers are based only on the uploaded document"
                 >
                   📄
@@ -1438,7 +1413,7 @@ export default function ChatPage({
                   uploading
                 }
 
-                className="max-h-32 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="max-h-32 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
 
               <button
@@ -1448,7 +1423,7 @@ export default function ChatPage({
                 className={`shrink-0 rounded-xl px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                   isRecording
                     ? "bg-rose-600 text-white animate-pulse"
-                    : "bg-slate-800 text-slate-350 hover:bg-slate-700 hover:text-white"
+                    : "border border-slate-200 bg-slate-100 text-slate-700 hover:border-[#C59B27]/40 hover:bg-slate-200 hover:text-slate-900"
                 }`}
               >
                 {isRecording ? "🛑 Stop" : "🎙️ Voice"}
@@ -1464,14 +1439,14 @@ export default function ChatPage({
                   loading ||
                   uploading
                 }
-                className="shrink-0 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                className="shrink-0 rounded-xl bg-[#C59B27] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#B38A1F] disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
               >
                 ↑
               </button>
 
             </div>
 
-            <p className="mt-2 text-center text-xs text-slate-600">
+            <p className="mt-2 text-center text-xs text-slate-400">
               Press Enter to send · Shift + Enter for a new line
             </p>
 

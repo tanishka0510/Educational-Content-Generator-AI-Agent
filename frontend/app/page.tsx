@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LandingPage from "@/components/LandingPage";
 import ChatPage from "@/components/ChatPage";
 import Auth from "@/components/Auth";
 import Dashboard from "@/components/Dashboard";
 import QuizView from "@/components/QuizView";
 import FlashcardsView from "@/components/FlashcardsView";
 
-type Section = "home" | "chat" | "quiz" | "flashcards" | "dashboard" | "auth";
+type Section = "landing" | "home" | "chat" | "quiz" | "flashcards" | "dashboard" | "auth";
 
 interface QuizFlashcardInitProps {
   launchOrigin?: "home" | "chat";
@@ -21,7 +22,7 @@ interface QuizFlashcardInitProps {
 }
 
 export default function Home() {
-  const [activeSection, setActiveSection] = useState<Section>("home");
+  const [activeSection, setActiveSection] = useState<Section>("landing");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [redirectTarget, setRedirectTarget] = useState<Section | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function Home() {
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     setIsLoggedIn(false);
-    setActiveSection("home");
+    setActiveSection("landing");
   };
 
   const handleAuthFailure = () => {
@@ -57,8 +58,14 @@ export default function Home() {
   };
 
   const navigateToSection = (target: Section) => {
-    // Chat, Quiz, and Flashcards are accessible directly for guests up to free trial limits
-    if (target === "home" || target === "chat" || target === "quiz" || target === "flashcards") {
+    // Landing, Home, Chat, Quiz, and Flashcards are accessible directly for guests up to free trial limits
+    if (
+      target === "landing" ||
+      target === "home" ||
+      target === "chat" ||
+      target === "quiz" ||
+      target === "flashcards"
+    ) {
       setActiveSection(target);
       return;
     }
@@ -88,6 +95,24 @@ export default function Home() {
   };
 
   // =====================================================
+  // Landing Page (Main Page)
+  // =====================================================
+  if (activeSection === "landing") {
+    return (
+      <LandingPage
+        onEnterWorkspace={() => setActiveSection("home")}
+        onOpenDashboard={() => navigateToSection("dashboard")}
+        onSignIn={() => {
+          setRedirectTarget("landing");
+          setActiveSection("auth");
+        }}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // =====================================================
   // Auth Screen
   // =====================================================
   if (activeSection === "auth") {
@@ -95,7 +120,7 @@ export default function Home() {
       <Auth
         customNotice={authNotice || undefined}
         onCancel={() => {
-          setActiveSection(redirectTarget || "home");
+          setActiveSection(redirectTarget || "landing");
           setRedirectTarget(null);
           setAuthNotice(null);
         }}
@@ -176,114 +201,150 @@ export default function Home() {
   }
 
   // =====================================================
-  // Home / Landing Page
+  // Agent Workspace Hub (The 3 Agents & All Content)
   // =====================================================
   return (
-    <main className="min-h-screen bg-slate-950 text-white relative">
-      
-      {/* Top Navigation Bar */}
-      <nav className="absolute top-0 right-0 p-6 flex justify-end items-center gap-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigateToSection("dashboard")}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium hover:bg-slate-800 transition"
-          >
-            📊 Performance Dashboard
-          </button>
-          {isLoggedIn ? (
+    <main className="min-h-screen bg-[#F8FAFC] text-slate-900 relative flex flex-col font-sans">
+      {/* Top Navigation Bar (Crisp White Theme) */}
+      <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleLogout}
-              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium hover:bg-slate-800 transition"
+              onClick={() => setActiveSection("landing")}
+              className="group inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition shadow-sm"
+              title="Return to Home"
             >
-              Log Out
+              <span className="transition-transform group-hover:-translate-x-1">←</span>
+              <span>Home</span>
             </button>
-          ) : (
-            <button
-              onClick={() => {
-                setRedirectTarget("home");
-                setActiveSection("auth");
-              }}
-              className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-200 transition"
-            >
-              Sign In
-            </button>
-          )}
-        </div>
-      </nav>
+            <span className="hidden sm:inline text-slate-300">|</span>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-[#C59B27] font-semibold tracking-wide uppercase">
+              <span className="flex h-2 w-2 rounded-full bg-[#C59B27] animate-pulse"></span>
+              <span>Autonomous Agent Workspace</span>
+            </div>
+          </div>
 
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-16">
-        
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigateToSection("dashboard")}
+              className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm"
+            >
+              📊 Performance Dashboard
+            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm"
+              >
+                Log Out
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setRedirectTarget("home");
+                  setActiveSection("auth");
+                }}
+                className="rounded-lg bg-[#C59B27] hover:bg-[#B38A1F] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-md transition"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto flex flex-1 w-full max-w-6xl flex-col items-center justify-center px-6 pt-28 pb-16">
         {/* Header Title */}
-        <div className="text-center mt-12">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-            AI Educational Assistant
-          </p>
-          <h1 className="text-5xl font-bold tracking-tight">
+        <div className="text-center max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#C59B27]/30 bg-amber-50 px-4 py-1 text-xs font-semibold text-[#C59B27] mb-4 shadow-sm">
+            <span>✨ Autonomous Multi-Agent Learning Suite</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-serif font-normal tracking-tight text-slate-900">
             Educational Content Generator
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-400">
-            Learn concepts, test your knowledge, and revise important topics using
-            AI-powered multi-agent learning tools.
+          <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
+            Select a specialized AI agent tool below to chat with your study materials, test your understanding
+            with adaptive quizzes, or reinforce key concepts with active-recall flashcards.
           </p>
         </div>
 
         {/* Main Options Grid */}
-        <div className="mt-14 grid w-full max-w-4xl gap-6 md:grid-cols-3">
-          
+        <div className="mt-12 grid w-full max-w-5xl gap-6 md:grid-cols-3">
           {/* Card 1: CHAT */}
           <button
             onClick={openChat}
-            className="group rounded-2xl border border-slate-800 bg-slate-900 p-8 text-left transition hover:-translate-y-1 hover:border-slate-600 hover:bg-slate-800"
+            className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-8 text-left transition-all hover:-translate-y-1.5 hover:border-[#C59B27] hover:shadow-xl hover:shadow-[#C59B27]/10 shadow-sm"
           >
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 text-2xl">
-              💬
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 border border-[#C59B27]/30 text-2xl text-[#C59B27] group-hover:scale-110 transition-transform">
+                  💬
+                </div>
+                <span className="rounded-md border border-[#C59B27]/30 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#C59B27]">
+                  3 Agents Coordinated
+                </span>
+              </div>
+              <h2 className="text-xl font-serif font-bold text-slate-900">Chat Assistant</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 font-normal">
+                Ask questions and get explanations from your subject material or uploaded documents with voice responses and diagram generation.
+              </p>
             </div>
-            <h2 className="text-xl font-semibold">Chat Assistant</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400 font-normal">
-              Ask questions and get explanations from your subject material or
-              uploaded documents.
-            </p>
-            <div className="mt-6 text-sm font-medium text-white">
-              Start chatting →
+            <div className="mt-8 flex items-center gap-2 text-sm font-semibold text-[#C59B27] group-hover:text-[#B38A1F]">
+              <span>Start chatting</span>
+              <span className="transition-transform group-hover:translate-x-1">→</span>
             </div>
           </button>
 
           {/* Card 2: QUIZ */}
           <button
             onClick={() => navigateToSection("quiz")}
-            className="group rounded-2xl border border-slate-800 bg-slate-900 p-8 text-left transition hover:-translate-y-1 hover:border-slate-600 hover:bg-slate-800"
+            className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-8 text-left transition-all hover:-translate-y-1.5 hover:border-[#C59B27] hover:shadow-xl hover:shadow-[#C59B27]/10 shadow-sm"
           >
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 text-2xl">
-              📝
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 border border-[#C59B27]/30 text-2xl text-[#C59B27] group-hover:scale-110 transition-transform">
+                  📝
+                </div>
+                <span className="rounded-md border border-[#C59B27]/30 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#C59B27]">
+                  Pedagogical Engine
+                </span>
+              </div>
+              <h2 className="text-xl font-serif font-bold text-slate-900">Interactive Quizzes</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 font-normal">
+                Test your understanding with AI-generated questions from your study material or any academic subject with instant rationales.
+              </p>
             </div>
-            <h2 className="text-xl font-semibold">Interactive Quizzes</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400 font-normal">
-              Test your understanding with AI-generated questions from your study material.
-            </p>
-            <div className="mt-6 text-sm font-medium text-white">
-              Take a quiz →
+            <div className="mt-8 flex items-center gap-2 text-sm font-semibold text-[#C59B27] group-hover:text-[#B38A1F]">
+              <span>Take a quiz</span>
+              <span className="transition-transform group-hover:translate-x-1">→</span>
             </div>
           </button>
 
           {/* Card 3: FLASHCARDS */}
           <button
             onClick={() => navigateToSection("flashcards")}
-            className="group rounded-2xl border border-slate-800 bg-slate-900 p-8 text-left transition hover:-translate-y-1 hover:border-slate-600 hover:bg-slate-800"
+            className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-8 text-left transition-all hover:-translate-y-1.5 hover:border-[#C59B27] hover:shadow-xl hover:shadow-[#C59B27]/10 shadow-sm"
           >
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 text-2xl">
-              🎴
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 border border-[#C59B27]/30 text-2xl text-[#C59B27] group-hover:scale-110 transition-transform">
+                  🎴
+                </div>
+                <span className="rounded-md border border-[#C59B27]/30 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#C59B27]">
+                  Spaced Repetition
+                </span>
+              </div>
+              <h2 className="text-xl font-serif font-bold text-slate-900">Spaced Flashcards</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 font-normal">
+                Revise important concepts quickly using interactive active-recall flashcards with spaced repetition ratings and mastery scoring.
+              </p>
             </div>
-            <h2 className="text-xl font-semibold">Spaced Flashcards</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400 font-normal">
-              Revise important concepts quickly using interactive active-recall flashcards.
-            </p>
-            <div className="mt-6 text-sm font-medium text-white">
-              Start revision →
+            <div className="mt-8 flex items-center gap-2 text-sm font-semibold text-[#C59B27] group-hover:text-[#B38A1F]">
+              <span>Start revision</span>
+              <span className="transition-transform group-hover:translate-x-1">→</span>
             </div>
           </button>
-
         </div>
-
       </div>
     </main>
   );

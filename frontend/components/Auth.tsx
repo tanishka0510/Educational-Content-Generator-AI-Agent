@@ -74,54 +74,57 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/60 p-8 shadow-xl backdrop-blur-md">
+    <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4 text-slate-900 font-sans">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl">
         
         {/* Back / Cancel button if provided */}
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="mb-4 text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5"
+            className="mb-4 text-xs font-medium text-slate-500 hover:text-slate-900 transition flex items-center gap-1.5"
           >
-            ← Back to Learning
+            ← Home
           </button>
         )}
 
         {/* Custom Notice Banner for Gating/Trial Limits */}
         {customNotice && (
-          <div className="mb-6 rounded-xl border border-sky-700/80 bg-sky-950/60 p-3.5 text-center text-xs leading-5 text-sky-200 shadow-sm">
-            <span className="font-semibold text-sky-400 mr-1.5">Free Trial Limit:</span>
+          <div className="mb-6 rounded-xl border border-[#C59B27]/30 bg-amber-50/80 p-3.5 text-center text-xs leading-5 text-[#9A7318] shadow-2xs">
+            <span className="font-bold text-[#C59B27] mr-1.5">Free Trial Notice:</span>
             {customNotice}
           </div>
         )}
 
         {/* Header */}
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-slate-400">
-            Educational AI Agent Platform
-          </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#C59B27] bg-amber-50 text-sm font-serif font-bold text-[#C59B27] shadow-sm">
+            SL
+          </div>
+          <span className="inline-block rounded-full border border-[#C59B27]/40 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#C59B27]">
+            SMARTLEARN ACADEMIC PLATFORM
+          </span>
+          <h2 className="mt-3 font-serif text-3xl font-medium tracking-tight text-slate-900">
             {isLogin ? "Sign In" : "Create Account"}
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-600">
             {isLogin
-              ? "Access your dashboard, chat history, and metrics"
-              : "Sign up to track your learning progress"}
+              ? "Access your academic analytics, document library, and chat records"
+              : "Sign up to track your learning progress and unlock unlimited access"}
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           {error && (
-            <div className={`rounded-lg p-4 text-sm ${error.includes("successfully") ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800" : "bg-rose-950/60 text-rose-400 border border-rose-800"}`}>
+            <div className={`rounded-lg p-4 text-sm ${error.includes("successfully") ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
               {error}
             </div>
           )}
 
           {!isLogin && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Username
               </label>
               <input
@@ -130,13 +133,13 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="johndoe"
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-slate-500"
+                className="mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#C59B27] focus:bg-white focus:ring-1 focus:ring-[#C59B27]/30 transition"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
               Email Address
             </label>
             <input
@@ -145,12 +148,12 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-slate-500"
+              className="mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#C59B27] focus:bg-white focus:ring-1 focus:ring-[#C59B27]/30 transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
               Password
             </label>
             <input
@@ -159,21 +162,21 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-slate-500"
+              className="mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#C59B27] focus:bg-white focus:ring-1 focus:ring-[#C59B27]/30 transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-white py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:opacity-40"
+            className="w-full rounded-xl bg-[#C59B27] py-3 text-sm font-bold text-white transition hover:bg-[#B38A1F] disabled:opacity-40 shadow-md"
           >
             {loading ? "Processing..." : isLogin ? "Sign In" : "Sign Up"}
           </button>
         </form>
 
         {/* Footer Toggle */}
-        <div className="mt-6 text-center text-sm text-slate-400">
+        <div className="mt-6 text-center text-sm text-slate-500">
           {isLogin ? (
             <p>
               Don&apos;t have an account?{" "}
@@ -183,7 +186,7 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
                   setIsLogin(false);
                   setError("");
                 }}
-                className="font-medium text-white underline hover:text-slate-200"
+                className="font-semibold text-[#C59B27] underline hover:text-[#B38A1F] transition"
               >
                 Sign Up
               </button>
@@ -197,7 +200,7 @@ export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProp
                   setIsLogin(true);
                   setError("");
                 }}
-                className="font-medium text-white underline hover:text-slate-200"
+                className="font-semibold text-[#C59B27] underline hover:text-[#B38A1F] transition"
               >
                 Sign In
               </button>
