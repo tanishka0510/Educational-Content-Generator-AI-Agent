@@ -22,8 +22,6 @@ export default function ChatPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const [subject, setSubject] = useState("OS");
-
   const sendMessage = async () => {
     if (!question.trim() || loading) {
       return;
@@ -64,7 +62,6 @@ export default function ChatPage() {
           },
 
           body: JSON.stringify({
-            subject: subject,
             question: userQuestion,
             document_uploaded: false,
           }),
@@ -144,7 +141,13 @@ export default function ChatPage() {
           SIDEBAR
       ====================================== */}
 
-      <ChatSidebar />
+      <ChatSidebar
+        chats={[]}
+        activeChatId={null}
+        onNewChat={() => {}}
+        onSelectChat={() => {}}
+        onBack={() => {}}
+      />
 
 
       {/* ======================================
@@ -172,27 +175,6 @@ export default function ChatPage() {
             </div>
 
 
-            {/* Subject selector */}
-
-            <select
-              value={subject}
-              onChange={(event) =>
-                setSubject(event.target.value)
-              }
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
-            >
-              <option value="OS">Operating System</option>
-              <option value="OOP">Object Oriented Programming</option>
-              <option value="CNS">Cryptography and Network Security</option>
-              <option value="DBMS">Database Management System</option>
-              <option value="SE">Software Engineering</option>
-              <option value="AI">Artificial Intelligence</option>
-              <option value="ETC">Effective Technical Communication</option>
-              <option value="COA">Computer Organization and Architecture</option>
-              <option value="DATA STRUCTURE">Data Structure</option>
-
-            </select>
-
           </div>
 
         </header>
@@ -216,8 +198,7 @@ export default function ChatPage() {
                 </h2>
 
                 <p className="mt-2 max-w-md text-slate-400">
-                  Ask a question about your selected
-                  subject.
+                  Ask a question about any topic.
                 </p>
 
               </div>
@@ -269,7 +250,7 @@ export default function ChatPage() {
                 setQuestion(event.target.value)
               }
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your subject..."
+              placeholder="Ask anything you want to learn..."
               rows={1}
               className="min-h-[52px] flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-slate-500"
             />

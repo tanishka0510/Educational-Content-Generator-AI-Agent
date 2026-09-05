@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatMessage from "@/components/ChatMessage";
+import DocumentsModal, { UploadedDocument } from "@/components/DocumentsModal";
 
 // =====================================================
 // Types
@@ -13,7 +14,7 @@ interface ComparisonTableData {
   rows: string[][];
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   summary?: string;
   answer?: string;
   comparison_table?: ComparisonTableData;
@@ -42,10 +43,20 @@ interface UploadResponse {
 }
 
 interface Message {
+  id?: string;
   role: "user" | "assistant";
   content?: string;
   code?: string;
   comparison_table?: ComparisonTableData;
+  audio_url?: string;
+  topic?: string;
+  intent?: string;
+  difficulty?: string;
+  unit?: string;
+  subject?: string;
+  is_voice_response?: boolean;
+  image_url?: string | null;
+  generated_image?: string;
 }
 
 interface Chat {
@@ -62,8 +73,22 @@ interface Chat {
 // =====================================================
 
 interface ChatPageProps {
-  subject: string;
   onBack: () => void;
+  onAuthFailure?: () => void;
+  onRequireAuth?: (message?: string) => void;
+  onOpenQuiz: (props: QuizFlashcardInitProps) => void;
+  onOpenFlashcards: (props: QuizFlashcardInitProps) => void;
+}
+
+interface QuizFlashcardInitProps {
+  launchOrigin?: "home" | "chat";
+  initialSubject?: string;
+  initialTopic?: string;
+  initialDifficulty?: string;
+  initialDocumentUploaded?: boolean;
+  initialNumQuestions?: number;
+  initialNumCards?: number;
+  autoStart?: boolean;
 }
 
 // =====================================================
@@ -72,9 +97,6 @@ interface ChatPageProps {
 
 const STORAGE_KEY =
   "educational-content-generator-chats";
-
-const SUBJECT_STORAGE_KEY =
-  "educational-content-generator-selected-subject";
 
 // =====================================================
 // Backend URLs
@@ -89,81 +111,48 @@ const PROCESS_CONTENT_URL =
 const UPLOAD_URL =
   `${BACKEND_URL}/upload/`;
 
+const MULTIMEDIA_URL =
+  "http://127.0.0.1:8003";
+
 // =====================================================
 // Subject Names
 // =====================================================
 
-const SUBJECT_NAMES: Record<string, string> = {
-  OS: "Operating System",
-  DBMS: "Database Management System",
-  OOP: "Object Oriented Programming",
-  COA: "Computer Organization and Architecture",
-  AI: "Artificial Intelligence",
-  ETC: "Effective Technical Communication",
-  "DATA STRUCTURE": "Data Structure",
-  CNS: "Cryptography and Network Security",
-  SE: "Software Engineering",
-};
+const SUBJECT_ALIASES = [
+  ["operating system", "OS"], ["dbms", "DBMS"],
+  ["object oriented programming", "OOP"], ["oop", "OOP"],
+  ["cryptography", "CNS"], ["data structure", "DATA STRUCTURE"],
+  ["software engineering", "SE"], ["artificial intelligence", "AI"],
+].map(([name, code]) => [name, code] as const);
 
-// =====================================================
-// Default Questions
-// =====================================================
+function parseGenerationRequest(query: string): { type: "quiz" | "flashcards"; subject?: string; topic?: string } | null {
+  const normalizedQuery = query.trim();
+  const match = normalizedQuery.match(/^(?:please\s+)?(?:generate|make|create|prepare)\s+(?:me\s+)?(?:a\s+)?(?:\d+\s+)?(quiz|mcqs?|questions?|flashcards?)\b(?:\s+(?:on|about|for|covering)\s+(.+))?$/i)
+    || normalizedQuery.match(/^(?:please\s+)?(?:quiz|flashcards?)\s+me\s+on\s+(.+)$/i);
+  if (!match) return null;
+  const isFlashcards = /flashcards?/i.test(match[1]) || /^(?:please\s+)?flashcards?\s+me\s+on/i.test(normalizedQuery);
+  const isDirectQuiz = /^(?:please\s+)?quiz\s+me\s+on/i.test(normalizedQuery);
+  const scope = (isDirectQuiz || (isFlashcards && match.length === 2) ? match[1] : match[2])?.trim().replace(/[?.!]+$/, "");
+  let subject: string | undefined;
+  let topic = scope;
+  if (scope) {
+    const alias = SUBJECT_ALIASES.sort(([first], [second]) => second.length - first.length)
+      .find(([name]) => scope.toLowerCase() === name || scope.toLowerCase().startsWith(`${name} `));
+    if (alias) {
+      subject = alias[1];
+      topic = scope.slice(alias[0].length).trim();
+    }
+  }
+  return { type: isFlashcards ? "flashcards" : "quiz", subject, topic: topic || undefined };
+}
 
-const DEFAULT_QUESTIONS: Record<string, string[]> = {
-  OS: [
-    "Compare Process and Thread",
-    "Explain Process",
-    "Explain Thread",
-  ],
+function generateMessageId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
-  DBMS: [
-    "Compare Primary Key and Foreign Key",
-    "Explain Normalization",
-    "Explain SQL JOIN",
-  ],
-
-  OOP: [
-    "Compare Inheritance and Polymorphism",
-    "Explain Encapsulation",
-    "Explain Abstraction",
-  ],
-
-  COA: [
-    "Compare RISC and CISC",
-    "Explain Cache Memory",
-    "Explain Pipelining",
-  ],
-
-  AI: [
-    "Compare Supervised and Unsupervised Learning",
-    "Explain Artificial Neural Network",
-    "Explain Machine Learning",
-  ],
-
-  ETC: [
-    "Compare Formal and Informal Communication",
-    "Explain Communication Process",
-    "Explain Barriers to Communication",
-  ],
-
-  "DATA STRUCTURE": [
-    "Compare Array and Linked List",
-    "Explain Stack",
-    "Explain Binary Search Tree",
-  ],
-
-  CNS: [
-    "Compare Symmetric and Asymmetric Encryption",
-    "Explain RSA Algorithm",
-    "Explain Digital Signature",
-  ],
-
-  SE: [
-    "Compare Waterfall and Agile Model",
-    "Explain Software Development Life Cycle",
-    "Explain Software Testing",
-  ],
-};
+function ensureMessageIds(messages: Message[]): Message[] {
+  return messages.map((message) => ({ ...message, id: message.id || generateMessageId() }));
+}
 
 // =====================================================
 // Generate Chat ID
@@ -196,9 +185,29 @@ function generateChatTitle(question: string): string {
 // =====================================================
 
 export default function ChatPage({
-  subject,
   onBack,
+  onAuthFailure,
+  onRequireAuth,
+  onOpenQuiz,
+  onOpenFlashcards,
 }: ChatPageProps) {
+  // ===================================================
+  // Guest Trial State
+  // ===================================================
+
+  const [isLoggedIn, setIsLoggedIn] =
+    useState<boolean>(false);
+
+  const [guestChatCount, setGuestChatCount] =
+    useState<number>(0);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    setIsLoggedIn(!!token);
+    const count = parseInt(localStorage.getItem("guest_chat_count") || "0", 10);
+    setGuestChatCount(count);
+  }, []);
+
   // ===================================================
   // Current Question
   // ===================================================
@@ -235,11 +244,17 @@ export default function ChatPage({
     useState<string | null>(null);
 
   // ===================================================
-  // Uploaded Document
+  // Uploaded Document & Persistent Study Materials
   // ===================================================
 
   const [uploadedFile, setUploadedFile] =
     useState<File | null>(null);
+
+  const [uploadedDocName, setUploadedDocName] =
+    useState<string>("");
+
+  const [subjectDocuments, setSubjectDocuments] =
+    useState<Array<{ id?: number | string; filename?: string; original_name?: string; subject?: string }>>([]);
 
   const [documentUploaded, setDocumentUploaded] =
     useState<boolean>(false);
@@ -261,46 +276,71 @@ export default function ChatPage({
   // Current Subject Name
   // ===================================================
 
-  const subjectName =
-    SUBJECT_NAMES[subject] || subject;
-
-  // ===================================================
-  // Current Subject Default Questions
-  // ===================================================
-
-  const defaultQuestions =
-    DEFAULT_QUESTIONS[subject] || [];
-
-  // ===================================================
-  // Load Saved Chats
-  // ===================================================
-
   // Voice Recording state
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
+  // Documents Library state
+  const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState<boolean>(false);
+  const [totalDocumentCount, setTotalDocumentCount] = useState<number>(0);
+
   // ===================================================
-  // Load Saved Chats
+  // Load Saved Chats & Documents from Database
   // ===================================================
+
+  const fetchSubjectDocuments = async () => {
+    const token = localStorage.getItem("authToken");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const res = await fetch("http://127.0.0.1:8000/upload/documents", { headers });
+      if (res.ok) {
+        const docs = await res.json();
+        setSubjectDocuments(docs);
+      }
+
+      const allRes = await fetch("http://127.0.0.1:8000/upload/documents", { headers });
+      if (allRes.ok) {
+        const allDocs = await allRes.json();
+        if (Array.isArray(allDocs)) {
+          setTotalDocumentCount(allDocs.length);
+        }
+      }
+    } catch (err) {
+      console.error("Could not load documents:", err);
+    }
+  };
+
+  const handleSelectExistingDocument = (doc: UploadedDocument) => {
+    setUploadedDocName(doc.filename);
+    setUploadedFile(null);
+    setDocumentUploaded(true);
+    setUploadError("");
+
+    fetchSubjectDocuments();
+  };
 
   useEffect(() => {
     const fetchChats = async () => {
       const token = localStorage.getItem("authToken");
-      if (token) {
-        try {
-          const response = await fetch(`http://127.0.0.1:8000/chats?subject=${subject}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (response.ok) {
-            const backendChats = await response.json();
-            setChats(backendChats);
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/chats", { headers });
+        if (response.status === 401 && onAuthFailure) {
+          onAuthFailure();
+          return;
+        }
+        if (response.ok) {
+          const backendChats = await response.json();
+          if (Array.isArray(backendChats) && backendChats.length > 0) {
+            setChats(backendChats.map((chat: Chat) => ({ ...chat, messages: ensureMessageIds(chat.messages) })));
             return;
           }
-        } catch (err) {
-          console.error("Failed to load chats from backend db, falling back to local storage:", err);
         }
+      } catch (err) {
+        console.error("Failed to load chats from backend db, falling back to local storage:", err);
       }
 
       try {
@@ -308,7 +348,7 @@ export default function ChatPage({
         if (savedChats) {
           const parsedChats = JSON.parse(savedChats);
           if (Array.isArray(parsedChats)) {
-            setChats(parsedChats as Chat[]);
+            setChats((parsedChats as Chat[]).map((chat) => ({ ...chat, messages: ensureMessageIds(chat.messages) })));
           }
         }
       } catch (error) {
@@ -317,7 +357,27 @@ export default function ChatPage({
     };
 
     fetchChats();
-  }, [subject]);
+    fetchSubjectDocuments();
+  }, []);
+
+  const handleDeleteChat = async (chatId: string) => {
+    const token = localStorage.getItem("authToken");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      await fetch(`http://127.0.0.1:8000/chats/${chatId}`, {
+        method: "DELETE",
+        headers,
+      });
+    } catch (err) {
+      console.error("Failed to delete chat on backend:", err);
+    }
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    if (activeChatId === chatId) {
+      handleNewChat();
+    }
+  };
+
 
   // ===================================================
   // Save Chats (local only if not authenticated)
@@ -341,24 +401,6 @@ export default function ChatPage({
   }, [chats]);
 
   // ===================================================
-  // Save Current Subject
-  // ===================================================
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        SUBJECT_STORAGE_KEY,
-        subject
-      );
-    } catch (error) {
-      console.error(
-        "Could not save selected subject:",
-        error
-      );
-    }
-  }, [subject]);
-
-  // ===================================================
   // Create New Chat
   // ===================================================
 
@@ -366,6 +408,81 @@ export default function ChatPage({
     setMessages([]);
     setQuestion("");
     setActiveChatId(null);
+  };
+
+  const handleGenerateQuiz = (
+    subj: string,
+    topic?: string,
+    difficulty?: string,
+    docUploaded?: boolean,
+  ): void => {
+      onOpenQuiz({
+        launchOrigin: "chat",
+      initialSubject: subj,
+      initialTopic: topic,
+      initialDifficulty: difficulty,
+      initialDocumentUploaded: docUploaded,
+      initialNumQuestions: 5,
+      autoStart: true,
+    });
+  };
+
+  const handleGenerateFlashcards = (
+    subj: string,
+    topic?: string,
+    difficulty?: string,
+    docUploaded?: boolean,
+  ): void => {
+      onOpenFlashcards({
+        launchOrigin: "chat",
+      initialSubject: subj,
+      initialTopic: topic,
+      initialDifficulty: difficulty,
+      initialDocumentUploaded: docUploaded,
+      initialNumCards: 5,
+      autoStart: true,
+    });
+  };
+
+  const handleGenerateVoice = async (text: string): Promise<string> => {
+    const response = await fetch(`${MULTIMEDIA_URL}/multimedia/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error(`TTS request failed: ${response.status}`);
+    const data = await response.json();
+    if (data.audio_url) return data.audio_url;
+    if (data.audio_path) {
+      const filename = data.audio_path.split(/[\\/]/).pop();
+      if (filename) return `${MULTIMEDIA_URL}/outputs/audio/${filename}`;
+    }
+    throw new Error("TTS response did not include an audio URL.");
+  };
+
+  const handleGenerateImage = async (
+    prompt: string,
+    subj: string,
+    targetMessageId?: string,
+  ): Promise<string> => {
+    const response = await fetch(`${MULTIMEDIA_URL}/multimedia/image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!response.ok) throw new Error("Image generation failed. Please try again.");
+    const data = await response.json();
+    const imagePath = data.image_url || data.image_path;
+    if (!imagePath) throw new Error("Image generation returned no image.");
+    const imageUrl = imagePath.startsWith("http")
+      ? imagePath
+      : `${MULTIMEDIA_URL}/outputs/images/${imagePath.split(/[\\/]/).pop()}`;
+    setMessages((previous) => previous.map((message) => (
+      message.id === targetMessageId
+        ? { ...message, image_url: imageUrl, generated_image: imageUrl }
+        : message
+    )));
+    return imageUrl;
   };
 
   // ===================================================
@@ -376,7 +493,7 @@ export default function ChatPage({
     chat: Chat
   ): void => {
     setActiveChatId(chat.id);
-    setMessages(chat.messages);
+    setMessages(ensureMessageIds(chat.messages));
     setQuestion("");
   };
 
@@ -467,22 +584,6 @@ export default function ChatPage({
       const formData =
         new FormData();
 
-      // =================================================
-      // IMPORTANT
-      //
-      // Backend upload endpoint expects:
-      //
-      // subject: Form(...)
-      // file: UploadFile = File(...)
-      //
-      // Therefore BOTH fields must be sent.
-      // =================================================
-
-      formData.append(
-        "subject",
-        subject
-      );
-
       formData.append(
         "file",
         file
@@ -493,20 +594,22 @@ export default function ChatPage({
         file.name
       );
 
-      console.log(
-        "Selected subject:",
-        subject
-      );
+      // =================================================
+      // Send File To Backend with Auth Token
+      // =================================================
 
-      // =================================================
-      // Send File To Backend
-      // =================================================
+      const token = localStorage.getItem("authToken");
+      const uploadHeaders: Record<string, string> = {};
+      if (token) {
+        uploadHeaders["Authorization"] = `Bearer ${token}`;
+      }
 
       const response =
         await fetch(
           UPLOAD_URL,
           {
             method: "POST",
+            headers: uploadHeaders,
             body: formData,
           }
         );
@@ -561,19 +664,17 @@ export default function ChatPage({
       // =================================================
 
       setUploadedFile(file);
-
+      setUploadedDocName(file.name);
       setDocumentUploaded(true);
-
       setUploadError("");
+      fetchSubjectDocuments();
 
       // =================================================
       // Start Fresh Chat For Uploaded Document
       // =================================================
 
       setMessages([]);
-
       setQuestion("");
-
       setActiveChatId(null);
 
     } catch (error) {
@@ -583,8 +684,8 @@ export default function ChatPage({
       );
 
       setDocumentUploaded(false);
-
       setUploadedFile(null);
+      setUploadedDocName("");
 
       if (
         error instanceof Error
@@ -600,9 +701,6 @@ export default function ChatPage({
 
     } finally {
       setUploading(false);
-
-      // Allow selecting the same file again.
-      event.target.value = "";
     }
   };
 
@@ -619,9 +717,8 @@ export default function ChatPage({
     }
 
     setUploadedFile(null);
-
+    setUploadedDocName("");
     setDocumentUploaded(false);
-
     setUploadError("");
 
     // Start a new normal subject chat.
@@ -671,6 +768,19 @@ export default function ChatPage({
   };
 
   const sendVoiceMessage = async (audioBlob: Blob): Promise<void> => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      const currentCount = parseInt(localStorage.getItem("guest_chat_count") || "0", 10);
+      if (currentCount >= 10) {
+        if (onRequireAuth) {
+          onRequireAuth("You have asked 10 free questions. Sign in or create an account to unlock unlimited chat questions, quizzes, and flashcards!");
+        } else {
+          alert("Free trial limit reached: You have asked 10 questions. Please sign in or create an account for unlimited access.");
+        }
+        return;
+      }
+    }
+
     setLoading(true);
 
     const tempUserMsg: Message = {
@@ -682,7 +792,6 @@ export default function ChatPage({
     setMessages(updatedMessages);
 
     try {
-      const token = localStorage.getItem("authToken");
       const headers: Record<string, string> = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -690,11 +799,13 @@ export default function ChatPage({
 
       const formData = new FormData();
       formData.append("file", audioBlob, "recording.wav");
-      formData.append("subject", subject);
       if (activeChatId) {
         formData.append("session_id", activeChatId);
       }
       formData.append("document_uploaded", String(documentUploaded));
+      if (documentUploaded && uploadedDocName) {
+        formData.append("document_name", uploadedDocName);
+      }
 
       const response = await fetch("http://127.0.0.1:8000/voice/qa", {
         method: "POST",
@@ -708,26 +819,34 @@ export default function ChatPage({
 
       const data = await response.json();
 
+      if (!token) {
+        const newCount = (parseInt(localStorage.getItem("guest_chat_count") || "0", 10)) + 1;
+        localStorage.setItem("guest_chat_count", String(newCount));
+        setGuestChatCount(newCount);
+      }
+
       const finalUserMsg: Message = {
+        id: generateMessageId(),
         role: "user",
         content: `🎤 ${data.transcript}`,
       };
 
       const assistantMsg: Message = {
+        id: generateMessageId(),
         role: "assistant",
         content: data.answer,
         audio_url: data.audio_url,
         comparison_table: data.comparison_table,
         code: data.code,
+        topic: data.topic,
+        difficulty: data.difficulty,
+        subject: data.subject,
+        intent: data.intent,
+        is_voice_response: Boolean(data.audio_url),
       };
 
       const finalMessages = [...messages, finalUserMsg, assistantMsg];
       setMessages(finalMessages);
-
-      if (data.audio_url) {
-        const audio = new Audio(data.audio_url);
-        audio.play().catch((err) => console.log("Autoplay blocked by browser:", err));
-      }
 
       const resolvedSessionId = data.session_id;
 
@@ -742,7 +861,7 @@ export default function ChatPage({
       } else {
         const newChat: Chat = {
           id: resolvedSessionId,
-          subject,
+          subject: data.subject || "GENERAL",
           title: data.transcript.substring(0, 45) + (data.transcript.length > 45 ? "..." : ""),
           messages: finalMessages,
           createdAt: new Date().toISOString(),
@@ -771,10 +890,44 @@ export default function ChatPage({
       return;
     }
 
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      const currentCount = parseInt(localStorage.getItem("guest_chat_count") || "0", 10);
+      if (currentCount >= 10) {
+        if (onRequireAuth) {
+          onRequireAuth("You have asked 10 free questions. Sign in or create an account to unlock unlimited chat questions, quizzes, and flashcards!");
+        } else {
+          alert("Free trial limit reached: You have asked 10 questions. Please sign in or create an account for unlimited access.");
+        }
+        return;
+      }
+    }
+
     const userQuestion = question.trim();
+
+    const generationRequest = parseGenerationRequest(userQuestion);
+    if (generationRequest) {
+      const launchProps: QuizFlashcardInitProps = {
+        launchOrigin: "chat",
+        initialSubject: generationRequest.subject,
+        initialTopic: generationRequest.topic,
+        initialNumQuestions: 5,
+        initialNumCards: 5,
+        autoStart: true,
+      };
+      if (generationRequest.type === "quiz") {
+        onOpenQuiz(launchProps);
+      } else {
+        onOpenFlashcards(launchProps);
+      }
+      setQuestion("");
+      return;
+    }
+
     setQuestion("");
 
     const userMessage: Message = {
+      id: generateMessageId(),
       role: "user",
       content: userQuestion,
     };
@@ -784,7 +937,6 @@ export default function ChatPage({
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("authToken");
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -796,9 +948,10 @@ export default function ChatPage({
         method: "POST",
         headers,
         body: JSON.stringify({
-          subject,
           question: userQuestion,
           document_uploaded: documentUploaded,
+          document_name: documentUploaded ? uploadedDocName : undefined,
+          filename: documentUploaded ? uploadedDocName : undefined,
           session_id: activeChatId,
         }),
       });
@@ -816,21 +969,28 @@ export default function ChatPage({
 
       const data = await response.json();
 
+      if (!token) {
+        const newCount = (parseInt(localStorage.getItem("guest_chat_count") || "0", 10)) + 1;
+        localStorage.setItem("guest_chat_count", String(newCount));
+        setGuestChatCount(newCount);
+      }
+
       const assistantMessage: Message = {
+        id: generateMessageId(),
         role: "assistant",
         content: data.answer || data.summary || "I could not generate an answer.",
         code: data.code,
         comparison_table: data.comparison_table,
         audio_url: data.audio_url,
+        topic: data.topic,
+        intent: data.intent,
+        difficulty: data.difficulty,
+        unit: data.unit,
+        subject: data.subject,
       };
 
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
-
-      if (data.audio_url) {
-        const audio = new Audio(data.audio_url);
-        audio.play().catch((err) => console.log("Voice reply autoplay blocked:", err));
-      }
 
       const resolvedSessionId = data.session_id || activeChatId;
 
@@ -849,7 +1009,7 @@ export default function ChatPage({
       } else {
         const newChat: Chat = {
           id: resolvedSessionId || generateChatId(),
-          subject,
+          subject: data.subject || "GENERAL",
           title: generateChatTitle(userQuestion),
           messages: finalMessages,
           createdAt: new Date().toISOString(),
@@ -925,11 +1085,15 @@ export default function ChatPage({
 
       <ChatSidebar
         chats={chats}
-        currentSubject={subject}
         activeChatId={activeChatId}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
         onBack={onBack}
+        onOpenDocuments={() => setIsDocumentsModalOpen(true)}
+        documentCount={totalDocumentCount || subjectDocuments.length}
+        activeDocumentName={documentUploaded ? (uploadedFile?.name || uploadedDocName) : ""}
+        onUnloadDocument={handleRemoveDocument}
       />
 
       {/* =================================================
@@ -954,72 +1118,68 @@ export default function ChatPage({
             </p>
           </div>
 
-          {/* =================================================
-              SUBJECT
-          ================================================= */}
-
-          <div className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white">
-            {subjectName}
-          </div>
-
         </header>
 
         {/* =================================================
             DOCUMENT STATUS
         ================================================= */}
 
-        {documentUploaded &&
-          uploadedFile && (
-            <div className="border-b border-slate-800 bg-slate-900/70 px-6 py-3">
+        {documentUploaded && (uploadedFile || uploadedDocName) && (
+          <div className="border-b border-slate-800 bg-slate-900/70 px-6 py-3">
 
-              <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+            <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
 
-                <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
 
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800">
-                    📄
-                  </div>
-
-                  <div className="min-w-0">
-
-                    <p className="text-xs font-medium text-slate-400">
-                      Uploaded Document
-                    </p>
-
-                    <p className="truncate text-sm text-white">
-                      {uploadedFile.name}
-                    </p>
-
-                  </div>
-
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800">
+                  📄
                 </div>
 
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="min-w-0">
 
-                  <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                    Document Mode
-                  </span>
+                  <p className="text-xs font-medium text-slate-400">
+                    Active Study Document {subjectDocuments.length > 1 ? `(${subjectDocuments.length} in DB)` : ""}
+                  </p>
 
-                  <button
-                    type="button"
-                    onClick={
-                      handleRemoveDocument
-                    }
-                    disabled={
-                      uploading ||
-                      loading
-                    }
-                    className="rounded-lg px-3 py-1.5 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Remove
-                  </button>
+                  <p className="truncate text-sm text-white font-medium">
+                    {uploadedFile?.name || uploadedDocName}
+                  </p>
 
                 </div>
 
               </div>
 
+              <div className="flex shrink-0 items-center gap-2.5">
+
+                <span className="rounded-full border border-sky-800/60 bg-sky-950/50 px-3 py-1 text-xs text-sky-300">
+                  Document Mode (Saved)
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setIsDocumentsModalOpen(true)}
+                  className="rounded-lg border border-sky-800/50 bg-sky-950/40 px-2.5 py-1 text-xs text-sky-300 transition hover:bg-sky-900/60 hover:text-white"
+                  title="Switch to another previously uploaded document"
+                >
+                  Switch Doc
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRemoveDocument}
+                  disabled={uploading || loading}
+                  className="rounded-lg px-3 py-1.5 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Unload
+                </button>
+
+              </div>
+
             </div>
-          )}
+
+          </div>
+        )}
+
 
         {/* =================================================
             UPLOAD ERROR
@@ -1073,47 +1233,9 @@ export default function ChatPage({
 
                   {documentUploaded
                     ? `Ask a question about ${uploadedFile?.name}. Answers will be generated from the uploaded document.`
-                    : `Ask a question about ${subjectName}.`}
+                    : "Ask a question about any topic."}
 
                 </p>
-
-                {/* =================================================
-                    DEFAULT QUESTIONS
-                ================================================= */}
-
-                {!documentUploaded &&
-                  defaultQuestions.length >
-                    0 && (
-
-                    <div className="mt-6 flex flex-wrap justify-center gap-2">
-
-                      {defaultQuestions.map(
-                        (
-                          defaultQuestion,
-                          index
-                        ) => (
-
-                          <button
-                            key={index}
-                            onClick={() =>
-                              handleDefaultQuestion(
-                                defaultQuestion
-                              )
-                            }
-                            disabled={
-                              uploading ||
-                              loading
-                            }
-                            className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            {defaultQuestion}
-                          </button>
-
-                        )
-                      )}
-
-                    </div>
-                  )}
 
                 {/* =================================================
                     UPLOAD BUTTON
@@ -1164,8 +1286,14 @@ export default function ChatPage({
                 ) => (
 
                   <ChatMessage
-                    key={index}
+                    key={message.id || index}
                     message={message}
+                    currentSubject={message.subject || ""}
+                    onGenerateQuiz={handleGenerateQuiz}
+                    onGenerateFlashcards={handleGenerateFlashcards}
+                    onGenerateVoice={handleGenerateVoice}
+                    onGenerateImage={handleGenerateImage}
+                    documentUploaded={documentUploaded}
                   />
 
                 )
@@ -1195,48 +1323,6 @@ export default function ChatPage({
         <div className="border-t border-slate-800 p-4">
 
           <div className="mx-auto max-w-4xl">
-
-            {/* =================================================
-                UPLOAD BUTTON + DOCUMENT INDICATOR
-            ================================================= */}
-
-            <div className="mb-2 flex items-center justify-between">
-
-              <div>
-
-                {!documentUploaded ? (
-
-                  <button
-                    type="button"
-                    onClick={
-                      handleOpenFilePicker
-                    }
-                    disabled={
-                      uploading ||
-                      loading
-                    }
-                    className="rounded-lg px-3 py-1.5 text-xs text-slate-500 transition hover:bg-slate-900 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    📎 Upload Document
-                  </button>
-
-                ) : (
-
-                  <span className="text-xs text-slate-500">
-                    📄 Answers are based only on the uploaded document
-                  </span>
-
-                )}
-
-              </div>
-
-              {uploading && (
-                <span className="text-xs text-slate-500">
-                  Uploading...
-                </span>
-              )}
-
-            </div>
 
             {/* =================================================
                 HIDDEN FILE INPUT
@@ -1292,20 +1378,40 @@ export default function ChatPage({
                 TEXT INPUT
             ================================================= */}
 
+            {!isLoggedIn && (
+              <div className="mb-2.5 flex items-center justify-between rounded-xl border border-sky-800/60 bg-sky-950/40 px-4 py-2 text-xs text-sky-300">
+                <span>Free Trial: <b>{guestChatCount} of 10</b> questions asked</span>
+                {onRequireAuth && (
+                  <button
+                    type="button"
+                    onClick={() => onRequireAuth("Sign up or log in to unlock unlimited chat questions, quizzes, and flashcards!")}
+                    className="font-medium underline hover:text-white transition"
+                  >
+                    Sign In for Unlimited →
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex items-end gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-2">
 
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={loading || uploading}
-                className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                  isRecording 
-                    ? "bg-rose-600 text-white animate-pulse" 
-                    : "bg-slate-800 text-slate-350 hover:bg-slate-700 hover:text-white"
-                }`}
-              >
-                {isRecording ? "🛑 Stop" : "🎙️ Voice"}
-              </button>
+              {!documentUploaded ? (
+                <button
+                  type="button"
+                  onClick={handleOpenFilePicker}
+                  disabled={uploading || loading}
+                  className="shrink-0 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  📎 Upload
+                </button>
+              ) : (
+                <span
+                  className="shrink-0 px-3 py-2.5 text-sm text-slate-500"
+                  title="Answers are based only on the uploaded document"
+                >
+                  📄
+                </span>
+              )}
 
               <textarea
                 value={question}
@@ -1323,7 +1429,7 @@ export default function ChatPage({
                 placeholder={
                   documentUploaded
                     ? "Ask a question about the uploaded document..."
-                    : `Ask a question about ${subjectName}...`
+                    : "Ask anything you want to learn..."
                 }
 
                 rows={1}
@@ -1332,8 +1438,21 @@ export default function ChatPage({
                   uploading
                 }
 
-                className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="max-h-32 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               />
+
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={loading || uploading}
+                className={`shrink-0 rounded-xl px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  isRecording
+                    ? "bg-rose-600 text-white animate-pulse"
+                    : "bg-slate-800 text-slate-350 hover:bg-slate-700 hover:text-white"
+                }`}
+              >
+                {isRecording ? "🛑 Stop" : "🎙️ Voice"}
+              </button>
 
               <button
                 type="button"
@@ -1345,7 +1464,7 @@ export default function ChatPage({
                   loading ||
                   uploading
                 }
-                className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                className="shrink-0 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ↑
               </button>
@@ -1361,6 +1480,14 @@ export default function ChatPage({
         </div>
 
       </section>
+
+      <DocumentsModal
+        isOpen={isDocumentsModalOpen}
+        onClose={() => setIsDocumentsModalOpen(false)}
+        activeDocumentName={documentUploaded ? (uploadedFile?.name || uploadedDocName) : ""}
+        onSelectDocument={handleSelectExistingDocument}
+        onUnloadDocument={handleRemoveDocument}
+      />
 
     </main>
   );

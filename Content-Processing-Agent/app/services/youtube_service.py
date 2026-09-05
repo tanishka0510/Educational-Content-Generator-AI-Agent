@@ -1,44 +1,60 @@
+import os
+
+from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from app.core.config import settings
+load_dotenv()
+
+YOUTUBE_API_KEY = settings.YOUTUBE_API_KEY
+youtube = build(
+    "youtube",
+    "v3",
+    developerKey=YOUTUBE_API_KEY 
+)
 
 
 def search_youtube(query: str, max_results: int = 5):
-    if not settings.YOUTUBE_API_KEY:
-        return []
+    """
+    Search educational YouTube videos.
+    """
+
+    education_keywords = ["what","how","why","explain","define","algorithm","stack","queue","tree","graph","python","java","c++","database","sql",]
+
+    if any(word in query.lower() for word in education_keywords):
+        query = f"{query} tutorial"
+
+    request = youtube.search().list(
+        part="snippet",
+        q=query,
+        type="video",
+        maxResults=max_results,
+        videoEmbeddable="true",
+        videoDuration="medium"
+    )
 
     try:
-        youtube = build(
-            "youtube",
-            "v3",
-            developerKey=settings.YOUTUBE_API_KEY
-        )
+        response = request.execute()
+    except Exception as e:
+        print("YouTube API Error:", e)
+        return []
 
-        response = youtube.search().list(
-            part="snippet",
-            q=f"{query} tutorial",
-            type="video",
-            maxResults=max_results,
-            videoEmbeddable="true",
-            videoDuration="medium"
-        ).execute()
+    videos = []
 
-        videos = []
+    for item in response.get("items", []):
 
-        for item in response.get("items", []):
-            snippet = item["snippet"]
-            video_id = item["id"]["videoId"]
+        video_id = item["id"]["videoId"]
 
-            videos.append({
+        snippet = item["snippet"]
+
+        videos.append(
+            {
                 "title": snippet["title"],
                 "channel": snippet["channelTitle"],
                 "description": snippet["description"],
                 "url": f"https://www.youtube.com/watch?v={video_id}",
                 "thumbnail": snippet["thumbnails"]["high"]["url"],
-                "published_at": snippet["publishedAt"]
-            })
+                "published_at": snippet["publishedAt"],
+            }
+        )
 
-        return videos
-
-    except Exception as e:
-        print("YouTube API Error:", e)
-        return []
+    return videos

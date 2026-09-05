@@ -69,14 +69,19 @@ def content_processing_node(state: AgentState) -> Dict[str, Any]:
     logger.info("Node: Content Processing")
     
     subject = state.get("subject")
+    subject_hint = state.get("subject_hint")
     query = state.get("user_query", "")
     document_uploaded = state.get("document_uploaded", False)
+    document_name = state.get("document_name")
     
     url = f"{CONTENT_PROCESSING_URL}/process-content"
     payload = {
         "subject": subject,
+        "subject_hint": subject_hint,
         "question": query,
-        "document_uploaded": document_uploaded
+        "document_uploaded": document_uploaded,
+        "document_name": document_name,
+        "filename": document_name
     }
     
     try:
@@ -87,6 +92,7 @@ def content_processing_node(state: AgentState) -> Dict[str, Any]:
             logger.info("Content Processing Agent call successful.")
             return {
                 "processed_content": processed_data,
+                "subject": processed_data.get("subject") or subject_hint,
                 "status": "content_processed"
             }
     except Exception as e:
@@ -106,6 +112,7 @@ def educational_agent_node(state: AgentState) -> Dict[str, Any]:
     subject = state.get("subject")
     query = state.get("user_query", "")
     document_uploaded = state.get("document_uploaded", False)
+    document_name = state.get("document_name")
     processed_content = state.get("processed_content", {})
     
     # If the Content Processing Node failed or had errors, we still want to call Educational Agent with empty context.
@@ -113,7 +120,9 @@ def educational_agent_node(state: AgentState) -> Dict[str, Any]:
     payload = {
         "subject": subject,
         "question": query,
-        "document_uploaded": document_uploaded
+        "document_uploaded": document_uploaded,
+        "document_name": document_name,
+        "filename": document_name
     }
     
     # In case we bypassed Content Processing (e.g. for general queries) or it was successful,

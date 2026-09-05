@@ -60,7 +60,7 @@ class SpeechToTextService:
             try:
                 # Transcribe using Gemini 2.5 Flash
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.6-flash",
                     contents=[
                         uploaded_file,
                         "Provide the exact transcription of this audio. Return ONLY the spoken text, without any added explanation, greeting, or meta-comments."

@@ -61,3 +61,29 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+
+
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security_bearer = HTTPBearer(auto_error=False)
+
+
+def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Dependency that retrieves the logged-in user if token is present,
+    or None if user is unauthenticated / guest.
+    """
+    if not credentials:
+        return None
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id_str: str = payload.get("sub")
+        if not user_id_str:
+            return None
+        return get_user_by_id(db, int(user_id_str))
+    except Exception:
+        return None
+

@@ -22,6 +22,8 @@ The Hybrid Retriever is responsible for:
 """
 
 
+from typing import Optional, List, Dict, Any, Tuple
+
 from app.services.hybrid_retriever import hybrid_search
 
 from app.services.llm_service import (
@@ -469,6 +471,7 @@ def process_question(
     subject: str,
     question: str,
     document_uploaded: bool = False,
+    filename: str | None = None,
 ):
     """
     Retrieve information and generate structured
@@ -494,6 +497,7 @@ def process_question(
         subject=subject,
         question=question,
         document_uploaded=document_uploaded,
+        filename=filename,
     )
 
     # ======================================================

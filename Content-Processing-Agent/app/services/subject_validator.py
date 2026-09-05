@@ -24,7 +24,7 @@ from google import genai
 from app.core.config import settings
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 # ==========================================================
@@ -505,16 +505,38 @@ Do not provide any explanation.
 
     try:
 
-        response = client.models.generate_content(
-            model=settings.LLM_MODEL,
-            contents=prompt,
-        )
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        if groq_api_key:
+            print("\n========== GROQ SUBJECT VALIDATION REQUEST ==========")
+            import requests
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "groq/compound",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+            }
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            response.raise_for_status()
+            text = response.json()["choices"][0]["message"]["content"].strip()
+        else:
+            response = client.models.generate_content(
+                model=settings.LLM_MODEL,
+                contents=prompt,
+            )
 
-        text = (
-            response.text.strip()
-            if response.text
-            else ""
-        )
+            text = (
+                response.text.strip()
+                if response.text
+                else ""
+            )
 
         print(
             "\n========== SUBJECT VALIDATION =========="
@@ -687,17 +709,13 @@ def validate_question_subject(
     if not question or not question.strip():
         return False, "Unknown"
 
-    selected_code = normalize_subject(selected_subject)
+    selected_code = normalize_subject(
+        selected_subject
+    )
 
-    if not selected_code:
-        detected_code, score = detect_question_subject(question)
-
-        if detected_code == "Unknown":
-            return True, "Unknown"
-
-        return True, get_subject_name(detected_code)
-
-    selected_name = get_subject_name(selected_code)
+    selected_name = get_subject_name(
+        selected_subject
+    )
 
     detected_code, score = detect_question_subject(
         question

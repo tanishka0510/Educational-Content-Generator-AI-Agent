@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from backend.models.request import (
     SummaryRequest,
     TextToSpeechRequest,
+    ImageRequest,
     SpeechToTextRequest,
     VoiceQuestionRequest,
     MultimediaPipelineRequest,
@@ -93,7 +94,7 @@ def text_to_speech(request: TextToSpeechRequest):
         )
 
         return AudioResponse(
-            audio_path=result["audio_path"],
+            audio_url=result["audio_url"],
             message=result["message"]
         )
 
@@ -167,11 +168,11 @@ def ask_question(request: VoiceQuestionRequest):
 # --------------------------------------------------
 
 @router.post("/image")
-def generate_image(prompt: str):
+def generate_image(request: ImageRequest):
 
     try:
 
-        return image_service.generate_image(prompt)
+        return image_service.generate_image(request.prompt)
 
     except Exception as e:
 
@@ -218,8 +219,8 @@ def process_multimedia(request: MultimediaPipelineRequest):
     try:
 
         summary = None
-        audio_path = None
-        image_path = None
+        audio_url = None
+        image_url = None
 
         # Generate Summary
         if request.generate_summary:
@@ -236,7 +237,7 @@ def process_multimedia(request: MultimediaPipelineRequest):
                 text_for_audio
             )
 
-            audio_path = audio_result["audio_path"]
+            audio_url = audio_result["audio_url"]
 
         # Generate Educational Image
         if request.generate_image:
@@ -245,14 +246,13 @@ def process_multimedia(request: MultimediaPipelineRequest):
                 request.text
             )
 
-            # Adjust this key according to image_service.py
-            image_path = image_result.get("image_path")
+            image_url = image_result.get("image_url")
 
         return MultimediaPipelineResponse(
             success=True,
             summary=summary,
-            audio_path=audio_path,
-            image_path=image_path
+            audio_url=audio_url,
+            image_url=image_url
         )
 
     except Exception as e:

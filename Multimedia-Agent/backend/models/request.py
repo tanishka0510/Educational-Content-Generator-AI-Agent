@@ -27,6 +27,10 @@ class TextToSpeechRequest(BaseModel):
     )
 
 
+class ImageRequest(BaseModel):
+    prompt: str = Field(..., description="Prompt describing the educational image to generate.")
+
+
 class SpeechToTextRequest(BaseModel):
     """
     Request for transcribing an audio file.

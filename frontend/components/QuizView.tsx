@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface QuizQuestion {
   id: number;
@@ -19,19 +19,59 @@ interface QuizData {
   total_questions: number;
 }
 
-interface QuizViewProps {
-  onBack: () => void;
+interface AnswerRecord {
+  question: string;
+  selected_answer: string;
+  correct_answer: string;
+  is_correct: boolean;
+  topic?: string | null;
 }
 
-export default function QuizView({ onBack }: QuizViewProps) {
+interface QuizViewProps {
+  initialSubject?: string;
+  initialTopic?: string;
+  initialDifficulty?: string;
+  initialDocumentUploaded?: boolean;
+  initialNumQuestions?: number;
+  autoStart?: boolean;
+  onBack: () => void;
+  onAuthFailure?: () => void;
+  onRequireAuth?: (message?: string) => void;
+}
+
+export default function QuizView({
+  initialSubject = "",
+  initialTopic = "",
+  initialDifficulty = "medium",
+  initialDocumentUploaded = false,
+  initialNumQuestions = 5,
+  autoStart = false,
+  onBack,
+  onAuthFailure,
+  onRequireAuth,
+}: QuizViewProps) {
   // Setup State
-  const [subject, setSubject] = useState("OS");
-  const [difficulty, setDifficulty] = useState("medium");
-  const [numQuestions, setNumQuestions] = useState(5);
-  const [topic, setTopic] = useState("");
-  const [documentUploaded, setDocumentUploaded] = useState(false);
+  const [subject, setSubject] = useState(initialSubject);
+  const [difficulty, setDifficulty] = useState(initialDifficulty);
+  const [numQuestions, setNumQuestions] = useState(initialNumQuestions);
+  const [topic, setTopic] = useState(initialTopic ?? "");
+  const [documentUploaded, setDocumentUploaded] = useState(initialDocumentUploaded);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Sync initialSubject changes from parent
+  useEffect(() => {
+    if (initialSubject) {
+      setSubject(initialSubject);
+    }
+  }, [initialSubject]);
+
+  useEffect(() => {
+    setTopic(initialTopic ?? "");
+    setDifficulty(initialDifficulty);
+    setNumQuestions(initialNumQuestions);
+    setDocumentUploaded(initialDocumentUploaded);
+  }, [initialTopic, initialDifficulty, initialNumQuestions, initialDocumentUploaded]);
 
   // Quiz Game State
   const [quizData, setQuizData] = useState<QuizData | null>(null);
@@ -40,9 +80,56 @@ export default function QuizView({ onBack }: QuizViewProps) {
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [answersDetail, setAnswersDetail] = useState<AnswerRecord[]>([]);
+
+  // Guest usage state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [guestCount, setGuestCount] = useState(0);
+
+  const [history, setHistory] = useState<
+    Array<{
+      id?: number | string;
+      score: number;
+      total_questions: number;
+      topic?: string | null;
+      difficulty?: string | null;
+      created_at: string;
+    }>
+  >([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    const token = localStorage.getItem("authToken");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/quiz/history?subject=${subject}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch (err) {
+      console.error("Could not load quiz history:", err);
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    setIsLoggedIn(!!token);
+    const count = parseInt(localStorage.getItem("guest_quiz_count") || "0", 10);
+    setGuestCount(count);
+    fetchHistory();
+  }, [subject]);
+
 
   const startQuiz = async () => {
     setError("");
+    const quizTopic = topic.trim();
+    if (!quizTopic) {
+      setError("Please enter a topic to generate a quiz.");
+      return;
+    }
+
     setLoading(true);
     setQuizData(null);
     setCurrentQuestionIndex(0);
@@ -50,37 +137,80 @@ export default function QuizView({ onBack }: QuizViewProps) {
     setCompleted(false);
     setIsAnswered(false);
     setSelectedAnswer(null);
+    setAnswersDetail([]);
 
     const token = localStorage.getItem("authToken");
+    
+    // Check free trial limit for unauthenticated guest users
     if (!token) {
-      setError("Please log in first.");
-      setLoading(false);
-      return;
+      const currentGuestCount = parseInt(localStorage.getItem("guest_quiz_count") || "0", 10);
+      if (currentGuestCount >= 2) {
+        setLoading(false);
+        if (onRequireAuth) {
+          onRequireAuth("You have generated 2 free quizzes. Sign in or create an account to unlock unlimited quizzes, flashcards, and chat!");
+        } else {
+          setError("Free limit reached: You have generated 2 quizzes. Please Sign Up or Log In to continue.");
+        }
+        return;
+      }
     }
 
     try {
+      let quizSubject = subject.trim();
+      if (!quizSubject) {
+        const detectionResponse = await fetch(
+          `http://127.0.0.1:8001/detect-subject?question=${encodeURIComponent(quizTopic)}`
+        );
+        if (detectionResponse.ok) {
+          const detection = await detectionResponse.json();
+          quizSubject = detection.subject || "";
+        }
+      }
+
+      if (!quizSubject) {
+        throw new Error("Please include a recognizable subject in the topic.");
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const payload = {
+        subject: quizSubject,
+        topic: quizTopic,
+        difficulty,
+        number_of_questions: numQuestions,
+        document_uploaded: documentUploaded,
+      };
+      console.debug("Quiz generation payload", payload);
+
       const response = await fetch("http://127.0.0.1:8000/quiz/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          subject,
-          topic: topic.trim() || null,
-          difficulty,
-          number_of_questions: numQuestions,
-          document_uploaded: documentUploaded,
-        }),
+        headers,
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
+        if (response.status === 401 && onAuthFailure) {
+          onAuthFailure();
+          return;
+        }
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.detail || "Failed to generate quiz. Ensure Content Processing agent is running on 8001.");
       }
 
       const data = await response.json();
       setQuizData(data);
+
+      // Increment guest quiz count if unauthenticated
+      if (!token) {
+        const newCount = (parseInt(localStorage.getItem("guest_quiz_count") || "0", 10)) + 1;
+        localStorage.setItem("guest_quiz_count", String(newCount));
+        setGuestCount(newCount);
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -92,14 +222,32 @@ export default function QuizView({ onBack }: QuizViewProps) {
     }
   };
 
+  useEffect(() => {
+    if (autoStart) startQuiz();
+  }, [autoStart]);
+
   const handleSelectOption = (option: string) => {
     if (isAnswered) return;
     setSelectedAnswer(option);
     setIsAnswered(true);
 
     const currentQuestion = quizData?.questions[currentQuestionIndex];
-    if (option === currentQuestion?.correct_answer) {
+    const isCorrect = option === currentQuestion?.correct_answer;
+    if (isCorrect) {
       setScore((prev) => prev + 1);
+    }
+
+    if (currentQuestion) {
+      setAnswersDetail((prev) => [
+        ...prev,
+        {
+          question: currentQuestion.question,
+          selected_answer: option,
+          correct_answer: currentQuestion.correct_answer,
+          is_correct: isCorrect,
+          topic: quizData?.topic || null,
+        }
+      ]);
     }
   };
 
@@ -112,30 +260,36 @@ export default function QuizView({ onBack }: QuizViewProps) {
       setIsAnswered(false);
     } else {
       setCompleted(true);
-      // Submit results to backend database
+      
+      // Submit results and question details to backend database (saved for both registered & guest users)
       const token = localStorage.getItem("authToken");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (token) {
-        try {
-          await fetch("http://127.0.0.1:8000/quiz/submit", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              subject: quizData.subject,
-              topic: quizData.topic,
-              difficulty: quizData.difficulty,
-              score: score + (selectedAnswer === quizData.questions[currentQuestionIndex].correct_answer ? 1 : 0),
-              total_questions: quizData.total_questions,
-            }),
-          });
-        } catch (err) {
-          console.error("Could not save score in DB:", err);
-        }
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      try {
+        const finalScore = score + (selectedAnswer === quizData.questions[currentQuestionIndex].correct_answer ? 1 : 0);
+        await fetch("http://127.0.0.1:8000/quiz/submit", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            subject: quizData.subject,
+            topic: quizData.topic,
+            difficulty: quizData.difficulty,
+            score: finalScore,
+            total_questions: quizData.total_questions,
+            answers_detail: answersDetail,
+          }),
+        });
+      } catch (err) {
+        console.error("Could not save score in DB:", err);
       }
     }
   };
+
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-16 text-white flex justify-center items-center">
@@ -150,41 +304,104 @@ export default function QuizView({ onBack }: QuizViewProps) {
               </span>
               <h1 className="mt-2 text-3xl font-bold tracking-tight">Test Your Knowledge</h1>
               <p className="mt-2 text-sm text-slate-400">
-                Select your subject and difficulty to generate an interactive quiz
+                Enter a topic and difficulty to generate an interactive quiz
               </p>
             </div>
 
+            {/* Free Trial Banner for Guests */}
+            {!isLoggedIn && (
+              <div className="mt-4 flex items-center justify-between rounded-xl border border-sky-800/60 bg-sky-950/40 px-4 py-2.5 text-xs text-sky-300">
+                <span>Free Trial: <b>{guestCount} of 2</b> quizzes generated</span>
+                {onRequireAuth && (
+                  <button
+                    onClick={() => onRequireAuth("Sign up or log in to unlock unlimited quizzes, flashcards, and chat!")}
+                    className="font-medium underline hover:text-white transition"
+                  >
+                    Sign In for Unlimited →
+                  </button>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="mt-6 rounded-lg bg-rose-950/60 text-rose-400 border border-rose-800 p-4 text-sm">
-                {error}
+                <p>{error}</p>
+                {error.includes("limit") && onRequireAuth && (
+                  <button
+                    onClick={() => onRequireAuth("Sign in or create an account to unlock unlimited quizzes, flashcards, and chat!")}
+                    className="mt-3 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 transition block"
+                  >
+                    Sign In / Sign Up Now →
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Past Attempts Toggle */}
+            {history.length > 0 && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-2.5 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <span>📜</span>
+                    <span>Past Quiz Attempts for {subject} ({history.length})</span>
+                  </span>
+                  <span>{showHistory ? "Hide ▲" : "View History ▼"}</span>
+                </button>
+
+                {showHistory && (
+                  <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-2.5 text-xs">
+                    {history.map((h, i) => {
+                      const pct = Math.round((h.score / h.total_questions) * 100);
+                      const dt = new Date(h.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <div
+                          key={h.id || i}
+                          className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2 text-slate-300"
+                        >
+                          <div>
+                            <span className="font-semibold text-white">
+                              {h.topic || "General"}
+                            </span>
+                            <span className="ml-2 text-[10px] uppercase text-slate-500">
+                              {h.difficulty}
+                            </span>
+                            <span className="block text-[10px] text-slate-500">{dt}</span>
+                          </div>
+                          <div className="text-right">
+                            <span
+                              className={`font-bold ${
+                                pct >= 80
+                                  ? "text-emerald-400"
+                                  : pct >= 50
+                                  ? "text-amber-400"
+                                  : "text-rose-400"
+                              }`}
+                            >
+                              {h.score} / {h.total_questions} ({pct}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
             <div className="mt-8 space-y-5">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Select Subject
-                </label>
-                <select
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-slate-500"
-                >
-                  <option value="OS">Operating System</option>
-                  <option value="OOP">Object Oriented Programming</option>
-                  <option value="DBMS">Database Management System</option>
-                  <option value="CNS">Cryptography and Network Security</option>
-                  <option value="SE">Software Engineering</option>
-                  <option value="AI">Artificial Intelligence</option>
-                  <option value="ETC">Effective Technical Communication</option>
-                  <option value="COA">Computer Organization and Architecture</option>
-                  <option value="DATA STRUCTURE">Data Structure</option>
-                </select>
-              </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Topic (Optional)
+                  Topic
                 </label>
                 <input
                   type="text"
@@ -358,6 +575,21 @@ export default function QuizView({ onBack }: QuizViewProps) {
                 Score: {Math.round((score / quizData.total_questions) * 100)}%
               </div>
             </div>
+
+            {!isLoggedIn && (
+              <div className="mt-6 max-w-md mx-auto rounded-xl border border-sky-800/60 bg-sky-950/40 p-4 text-xs text-sky-200 text-center">
+                <p className="font-semibold text-sky-300 text-sm">Want to save your scores & track learning progress?</p>
+                <p className="mt-1 text-slate-300">Create a free account to unlock unlimited quizzes, flashcards, and personalized progress reports with concept remediation analytics.</p>
+                {onRequireAuth && (
+                  <button
+                    onClick={() => onRequireAuth("Sign in or create an account to save your scores and access complete learning reports.")}
+                    className="mt-3 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400 transition inline-block"
+                  >
+                    Sign In / Sign Up to Save Progress →
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="mt-10 flex gap-4 justify-center">
               <button

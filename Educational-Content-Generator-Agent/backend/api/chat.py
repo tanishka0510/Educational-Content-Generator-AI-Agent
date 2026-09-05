@@ -28,7 +28,10 @@ async def chat(request: ChatRequest):
         subject=request.subject,
         question=request.question,
         document_uploaded=request.document_uploaded,
+        filename=request.filename,
     )
+
+    effective_subject = content_response.get("subject") or request.subject
 
     # ======================================================
     # Step 2: Educational Content Generator takes the
@@ -46,10 +49,8 @@ async def chat(request: ChatRequest):
     # - bullet points
     # ======================================================
 
-    resolved_subject = content_response.get("subject", request.subject)
-
     response = process_chat_query(
-        subject=resolved_subject,
+        subject=effective_subject,
         question=request.question,
         content_response=content_response,
         document_uploaded=request.document_uploaded,

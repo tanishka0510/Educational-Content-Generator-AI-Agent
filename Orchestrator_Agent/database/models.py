@@ -25,6 +25,8 @@ class User(Base):
     sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     quizzes = relationship("QuizResult", back_populates="user", cascade="all, delete-orphan")
     flashcards = relationship("FlashcardProgress", back_populates="user", cascade="all, delete-orphan")
+    flashcard_attempts = relationship("FlashcardAttempt", back_populates="user", cascade="all, delete-orphan")
+    documents = relationship("UploadedDocument", back_populates="user", cascade="all, delete-orphan")
 
 
 class ChatSession(Base):
@@ -32,7 +34,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(String(50), primary_key=True, index=True)  # uniquely generated session ID
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     subject = Column(String(50), nullable=False)
     title = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -47,11 +49,12 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(String(50), ForeignKey("chat_sessions.id"), nullable=False)
+    session_id = Column(String(50), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
     role = Column(String(20), nullable=False)  # 'user' or 'assistant'
     content = Column(Text, nullable=True)
     comparison_table = Column(Text, nullable=True)  # JSON-stringified comparison table data
     code = Column(Text, nullable=True)  # optional generated code
+    audio_url = Column(Text, nullable=True)  # optional generated audio summary URL
     created_at = Column(DateTime, default=datetime.utcnow)
 
     session = relationship("ChatSession", back_populates="messages")
@@ -62,12 +65,13 @@ class QuizResult(Base):
     __tablename__ = "quiz_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     subject = Column(String(50), nullable=False)
     topic = Column(String(100), nullable=True)
     difficulty = Column(String(20), nullable=False)
     score = Column(Integer, nullable=False)
     total_questions = Column(Integer, nullable=False)
+    answers_detail = Column(Text, nullable=True)  # JSON-encoded array of questions & user answers
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="quizzes")
@@ -78,7 +82,7 @@ class FlashcardProgress(Base):
     __tablename__ = "flashcard_progress"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     subject = Column(String(50), nullable=False)
     topic = Column(String(100), nullable=True)
     card_id = Column(String(100), nullable=False)
@@ -88,3 +92,41 @@ class FlashcardProgress(Base):
     next_review_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="flashcards")
+
+
+class FlashcardAttempt(Base):
+    """Logs completed flashcard study sessions with accuracy and ratings breakdown."""
+    __tablename__ = "flashcard_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    subject = Column(String(50), nullable=False)
+    topic = Column(String(100), nullable=True)
+    difficulty = Column(String(20), default="medium")
+    total_cards = Column(Integer, nullable=False)
+    cards_reviewed = Column(Integer, nullable=False)
+    easy_count = Column(Integer, default=0)
+    medium_count = Column(Integer, default=0)
+    hard_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="flashcard_attempts")
+
+
+class UploadedDocument(Base):
+    """Stores metadata for user-uploaded learning documents (PDF, DOCX, TXT, etc.)."""
+    __tablename__ = "uploaded_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    filename = Column(String(255), nullable=False)
+    file_type = Column(String(50), nullable=False)
+    file_size = Column(Integer, default=0)  # in bytes
+    subject = Column(String(50), nullable=False)
+    topic = Column(String(150), nullable=True)
+    chunks_count = Column(Integer, default=0)
+    status = Column(String(50), default="Indexed")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="documents")
+

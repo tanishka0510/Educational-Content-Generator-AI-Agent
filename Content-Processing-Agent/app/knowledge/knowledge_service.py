@@ -22,6 +22,7 @@ This service:
 
 import re
 from pathlib import Path
+from typing import Optional, List, Dict, Any, Tuple
 
 from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
@@ -528,6 +529,7 @@ def search_knowledge(
 def search_uploaded_document(
     query: str,
     k: int = 8,
+    filename: Optional[str] = None,
 ):
     """
     Search only the uploaded document Chroma collection.
@@ -556,6 +558,12 @@ def search_uploaded_document(
         total_docs,
     )
 
+    if filename:
+        print(
+            "Filter Filename :",
+            filename,
+        )
+
     print(
         "=======================================\n"
     )
@@ -581,13 +589,25 @@ def search_uploaded_document(
     )
 
     # ------------------------------------------------------
-    # Chroma semantic search
+    # Chroma semantic search (with filename filter if provided)
     # ------------------------------------------------------
 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=k,
-    )
+    results = None
+    if filename:
+        try:
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=k,
+                where={"filename": filename}
+            )
+        except Exception as e:
+            print(f"Chroma where filter error: {e}, falling back to unfiltered search.")
+
+    if not results or not results.get("ids") or len(results["ids"][0]) == 0:
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=k,
+        )
 
     if (
         not results.get("ids")

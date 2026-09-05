@@ -454,7 +454,7 @@ def build_no_context_response(
 # ==========================================================
 
 def build_chat_prompt(
-    subject: str,
+    subject: str | None,
     question: str,
     context: str,
     document_uploaded: bool,
@@ -559,25 +559,14 @@ COMPARISON RULE
 
 If the query intent is COMPARISON:
 
-1. The comparison table in the context is authoritative.
-2. Use the provided comparison table.
-3. Present the comparison as a Markdown table.
-4. Preserve the meaning of the provided rows.
-5. Do not invent additional comparison criteria.
-6. Do not add outside knowledge.
-7. Do not replace the provided facts with general knowledge.
-8. A short introductory sentence may be used before the
-   table if useful.
-9. The final answer MUST contain a Markdown comparison table.
-10. The comparison table provided in the context is authoritative.
-11. Preserve all factual meanings from the provided comparison table.
-12. Do not add comparison criteria that are not present in the context.
-13. Do not replace the table with paragraphs or bullet points.
-14. A short introductory sentence may appear before the table.
-15. The main comparison MUST be presented as a Markdown table.
-
-If the comparison table is available, do not replace it
-with a paragraph-only answer.
+1. You MUST provide exactly one introductory sentence as your entire response. This sentence must be structured exactly like: "The [Topic A] and [Topic B] represent different [contexts/approaches]. Here's a comparison of their key features."
+2. Do NOT generate or include the Markdown comparison table in your response text. (The frontend user interface will automatically display the comparison table using structured data).
+3. Do NOT include any other paragraphs, text, definitions, bullet points, explanations, or conclusions. The entire response must consist of ONLY that single introductory sentence, and absolutely nothing else.
+4. Do not invent additional comparison criteria.
+5. Do not add outside knowledge.
+6. Do not replace the provided facts with general knowledge.
+7. Preserve all factual meanings from the provided comparison table.
+8. Do not replace the table with paragraphs or bullet points.
 
 ==================================================
 RESPONSE STYLE
@@ -689,7 +678,7 @@ Answer the student's request now.
 # ==========================================================
 
 def generate_chat_answer(
-    subject: str,
+    subject: str | None,
     question: str,
     content_response: dict,
     document_uploaded: bool,
@@ -786,7 +775,7 @@ def generate_chat_answer(
 # ==========================================================
 
 def process_chat_query(
-    subject: str,
+    subject: str | None,
     question: str,
     content_response: dict,
     document_uploaded: bool = False,
@@ -795,7 +784,6 @@ def process_chat_query(
     Main entry point for the Educational Content
     Generator Agent's chat functionality.
     """
-    subject = content_response.get("subject") or subject
 
     # ======================================================
     # Generate Final Answer

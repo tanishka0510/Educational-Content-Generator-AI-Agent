@@ -50,7 +50,7 @@ class DocumentLoadingService:
         # DOCX / PPTX
         # -------------------------------------
 
-        elif extension in [".docx", ".pptx"]:
+        elif extension in [".docx", ".pptx", ".ppt"]:
 
             print("Loading Office document...")
 

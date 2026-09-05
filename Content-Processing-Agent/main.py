@@ -27,6 +27,7 @@ from app.services.rag_service import (
 
 from app.services.subject_validator import (
     validate_question_subject,
+    detect_question_subject,
     get_subject_validation_message,
 )
 
@@ -108,6 +109,15 @@ async def health_check():
     }
 
 
+@app.get("/detect-subject", tags=["Subject Detection"])
+def detect_subject(question: str):
+    subject, score = detect_question_subject(question)
+    return {
+        "subject": subject if score > 0 else None,
+        "score": score,
+    }
+
+
 # =====================================================
 # Ask Question
 # =====================================================
@@ -148,18 +158,32 @@ def ask(request: QueryRequest):
 def process(request: QueryRequest):
 
     try:
+        selected_subject = request.subject
+
+        if not selected_subject:
+            detected_subject, detected_score = detect_question_subject(request.question)
+            if detected_score > 0:
+                selected_subject = detected_subject
+            elif request.subject_hint and any(
+                marker in request.question.lower()
+                for marker in ("its ", "their ", "these ", "those ", "four necessary", "why is it", "how does it")
+            ):
+                selected_subject = request.subject_hint
 
         # =====================================================
         # STEP 1: Validate Question Against Selected Subject
         # =====================================================
 
-        is_valid, detected_subject = validate_question_subject(
-            selected_subject=request.subject,
-            question=request.question,
-        )
+        if selected_subject:
+            is_valid, detected_subject = validate_question_subject(
+                selected_subject=selected_subject,
+                question=request.question,
+            )
+        else:
+            is_valid, detected_subject = True, "Unknown"
 
         print("\n========== SUBJECT VALIDATION ==========")
-        print("Selected Subject :", request.subject)
+        print("Selected Subject :", selected_subject)
         print("Question         :", request.question)
         print("Detected Subject :", detected_subject)
         print("Valid             :", is_valid)
@@ -173,7 +197,7 @@ def process(request: QueryRequest):
 
             return {
                 "summary": get_subject_validation_message(
-                    request.subject
+                    selected_subject or "the requested topic"
                 ),
                 "learning_objectives": [],
                 "keywords": [],
@@ -192,11 +216,14 @@ def process(request: QueryRequest):
         # Continue With Normal RAG Processing
         # =====================================================
 
-        return process_question(
-            subject=detected_subject or request.subject,
+        result = process_question(
+            subject=selected_subject,
             question=request.question,
             document_uploaded=request.document_uploaded,
+            filename=request.filename or request.document_name,
         )
+        result["subject"] = selected_subject
+        return result
 
     except ValueError as e:
 

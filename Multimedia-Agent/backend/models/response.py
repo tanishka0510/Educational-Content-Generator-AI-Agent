@@ -27,9 +27,9 @@ class AudioResponse(BaseModel):
 
     success: bool = True
 
-    audio_path: str = Field(
+    audio_url: str = Field(
         ...,
-        description="Path to generated audio file."
+        description="URL to generated audio file."
     )
 
     message: str = "Audio generated successfully."
@@ -73,9 +73,9 @@ class AudioSummaryResponse(BaseModel):
         description="Generated text summary."
     )
 
-    audio_path: str = Field(
+    audio_url: str = Field(
         ...,
-        description="Generated audio file path."
+        description="Generated audio file URL."
     )
 class MultimediaPipelineResponse(BaseModel):
     """
@@ -86,9 +86,9 @@ class MultimediaPipelineResponse(BaseModel):
 
     summary: Optional[str] = None
 
-    audio_path: Optional[str] = None
+    audio_url: Optional[str] = None
 
-    image_path: Optional[str] = None
+    image_url: Optional[str] = None
 
     
 class OCRRequest(BaseModel):

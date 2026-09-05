@@ -24,7 +24,6 @@ interface Chat {
 
 interface ChatSidebarProps {
   chats: Chat[];
-  currentSubject: string;
   activeChatId: string | null;
 
   onNewChat: () => void;
@@ -33,50 +32,17 @@ interface ChatSidebarProps {
     chat: Chat
   ) => void;
 
+  onDeleteChat?: (
+    chatId: string
+  ) => void;
+
   onBack: () => void;
+  onOpenDocuments?: () => void;
+  documentCount?: number;
+  activeDocumentName?: string;
+  onUnloadDocument?: () => void;
 }
 
-// =====================================================
-// Subject Names
-// =====================================================
-
-function getSubjectName(
-  subject: string
-): string {
-
-  switch (subject) {
-
-    case "OS":
-      return "Operating System";
-
-    case "OOP":
-      return "Object Oriented Programming";
-
-    case "CNS":
-      return "Cryptography and Network Security";
-
-    case "DBMS":
-      return "Database Management System";
-
-    case "SE":
-      return "Software Engineering";
-
-    case "AI":
-      return "Artificial Intelligence";
-
-    case "ETC":
-      return "Effective Technical Communication";
-
-    case "COA":
-      return "Computer Organization and Architecture";
-
-    case "DATA STRUCTURE":
-      return "Data Structure";
-
-    default:
-      return subject;
-  }
-}
 
 // =====================================================
 // Chat Sidebar
@@ -84,25 +50,19 @@ function getSubjectName(
 
 export default function ChatSidebar({
   chats,
-  currentSubject,
   activeChatId,
   onNewChat,
   onSelectChat,
+  onDeleteChat,
   onBack,
+  onOpenDocuments,
+  documentCount = 0,
+  activeDocumentName,
+  onUnloadDocument,
 }: ChatSidebarProps) {
 
-  // ===================================================
-  // Filter Chats By Current Subject
-  // ===================================================
 
-  const subjectChats =
-    chats
-      .filter(
-        (chat) =>
-          chat.subject ===
-          currentSubject
-      )
-      .sort(
+  const subjectChats = chats.sort(
         (a, b) =>
           new Date(
             b.updatedAt
@@ -147,12 +107,6 @@ export default function ChatSidebar({
             Educational AI
           </h2>
 
-          <p className="mt-1 text-xs text-slate-500">
-            {getSubjectName(
-              currentSubject
-            )}
-          </p>
-
         </div>
 
         {/* New Chat */}
@@ -172,6 +126,49 @@ export default function ChatSidebar({
 
         </button>
 
+        {/* Previous Documents Button */}
+        {onOpenDocuments && (
+          <button
+            type="button"
+            onClick={onOpenDocuments}
+            className="mt-2.5 flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5 text-xs font-medium text-slate-300 transition hover:border-sky-500/50 hover:bg-slate-800 hover:text-white group"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base group-hover:scale-110 transition-transform">📁</span>
+              <span className="truncate">Previous Documents</span>
+            </div>
+            {documentCount > 0 && (
+              <span className="shrink-0 rounded-full bg-sky-950 px-2 py-0.5 text-[10px] font-semibold text-sky-400 border border-sky-800/60">
+                {documentCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Active Document Indicator Pill */}
+        {activeDocumentName && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-sky-800/40 bg-sky-950/40 px-2.5 py-1.5 text-xs text-sky-300 animate-in fade-in duration-150">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0">📄</span>
+              <span className="truncate text-[11px] font-medium" title={activeDocumentName}>
+                {activeDocumentName}
+              </span>
+            </div>
+            {onUnloadDocument && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnloadDocument();
+                }}
+                className="shrink-0 text-[10px] text-sky-400 hover:text-rose-300 transition underline cursor-pointer"
+              >
+                Unload
+              </button>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* =================================================
@@ -182,11 +179,7 @@ export default function ChatSidebar({
 
         <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
 
-          {getSubjectName(
-            currentSubject
-          )}
-
-          {" "}Chats
+          Chats
 
         </div>
 
@@ -219,70 +212,72 @@ export default function ChatSidebar({
           // =================================================
 
           <div className="space-y-1">
+            {subjectChats.map((chat) => {
+              const formattedDate = chat.updatedAt
+                ? new Date(chat.updatedAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "";
 
-            {subjectChats.map(
-              (chat) => (
-
-                <button
+              return (
+                <div
                   key={chat.id}
-                  onClick={() =>
-                    onSelectChat(
-                      chat
-                    )
-                  }
-                  className={`w-full rounded-xl px-3 py-3 text-left transition ${
-                    activeChatId ===
-                    chat.id
+                  onClick={() => onSelectChat(chat)}
+                  className={`group relative flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition ${
+                    activeChatId === chat.id
                       ? "bg-slate-800 text-white"
                       : "text-slate-400 hover:bg-slate-900 hover:text-white"
                   }`}
                 >
-
-                  {/* Chat Title */}
-
-                  <div className="truncate text-sm font-medium">
-                    {chat.title}
+                  <div className="min-w-0 flex-1 pr-2">
+                    <div className="truncate text-sm font-medium">
+                      {chat.title}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                      <span>{chat.messages.length} messages</span>
+                      {formattedDate && (
+                        <>
+                          <span>•</span>
+                          <span>{formattedDate}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Message Count */}
-
-                  <div className="mt-1 text-xs text-slate-600">
-
-                    {chat.messages.length}{" "}
-                    messages
-
-                  </div>
-
-                </button>
-
-              )
-            )}
-
+                  {onDeleteChat && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete session "${chat.title}"?`)) {
+                          onDeleteChat(chat.id);
+                        }
+                      }}
+                      title="Delete chat session"
+                      className="rounded p-1 text-slate-500 opacity-0 transition hover:bg-rose-950/60 hover:text-rose-400 group-hover:opacity-100"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
+
         )}
-
-      </div>
-
-      {/* =================================================
-          CURRENT SUBJECT
-      ================================================= */}
-
-      <div className="border-t border-slate-800 p-4">
-
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-
-          <p className="text-xs text-slate-600">
-            Current Subject
-          </p>
-
-          <p className="mt-1 text-sm font-medium text-slate-300">
-            {getSubjectName(
-              currentSubject
-            )}
-          </p>
-
-        </div>
 
       </div>
 

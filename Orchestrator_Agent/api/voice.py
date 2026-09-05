@@ -26,9 +26,10 @@ TIMEOUT = 60.0
 @router.post("/qa")
 async def voice_qa(
     file: UploadFile = File(...),
-    subject: str = Form(...),
+    subject: Optional[str] = Form(None),
     session_id: Optional[str] = Form(None),
     document_uploaded: bool = Form(False),
+    document_name: Optional[str] = Form(None),
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
@@ -83,7 +84,8 @@ async def voice_qa(
             subject=subject,
             question=transcript,
             document_uploaded=document_uploaded,
-            session_id=session_id
+            session_id=session_id,
+            document_name=document_name
         )
         
         chat_response = process_content_endpoint(
@@ -95,9 +97,10 @@ async def voice_qa(
         # If the orchestrator generated a TTS path, we extract it.
         # Otherwise, we call TTS explicitly.
         audio_url = None
+        audio_url = chat_response.get("audio_url")
         audio_path_raw = chat_response.get("audio_path")
-        
-        if not audio_path_raw:
+
+        if not audio_url and not audio_path_raw:
             # Explicitly call TTS
             tts_url = f"{MULTIMEDIA_AGENT_URL}/multimedia/tts"
             async with httpx.AsyncClient() as client:
@@ -107,9 +110,11 @@ async def voice_qa(
                     timeout=TIMEOUT
                 )
                 if tts_response.status_code == 200:
-                    audio_path_raw = tts_response.json().get("audio_path")
+                    tts_data = tts_response.json()
+                    audio_url = tts_data.get("audio_url")
+                    audio_path_raw = tts_data.get("audio_path")
                     
-        if audio_path_raw:
+        if not audio_url and audio_path_raw:
             # Construct accessible URL link
             # Multimedia static server maps backend/outputs -> /outputs
             filename = Path(audio_path_raw).name
@@ -121,8 +126,10 @@ async def voice_qa(
             "answer": chat_response["answer"],
             "session_id": chat_response["session_id"],
             "audio_url": audio_url,
+            "subject": chat_response.get("subject"),
             "comparison_table": chat_response.get("comparison_table"),
-            "code": chat_response.get("code")
+            "code": chat_response.get("code"),
+            "intent": chat_response.get("intent")
         }
         
     except Exception as e:

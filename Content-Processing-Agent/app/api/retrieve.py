@@ -27,13 +27,8 @@ router = APIRouter(
 
 class RetrieveRequest(BaseModel):
 
-    # Optional:
-    # If subject is not provided, the Content Processing Agent
-    # will automatically detect the subject from the question.
-    subject: str | None = None
-
+    subject: str
     question: str
-
     document_uploaded: bool = False
 
 
@@ -51,8 +46,15 @@ async def retrieve_content(request: RetrieveRequest):
     print("===================================\n")
 
     # ------------------------------------------------------
-    # Validate question
+    # Validate request
     # ------------------------------------------------------
+
+    if not request.subject.strip():
+
+        raise HTTPException(
+            status_code=400,
+            detail="Subject is required.",
+        )
 
     if not request.question.strip():
 
@@ -60,16 +62,6 @@ async def retrieve_content(request: RetrieveRequest):
             status_code=400,
             detail="Question is required.",
         )
-
-    # ------------------------------------------------------
-    # Normalize subject
-    # ------------------------------------------------------
-
-    subject = request.subject.strip() if request.subject else None
-
-    # Empty string should behave like no subject.
-    if subject == "":
-        subject = None
 
     # ------------------------------------------------------
     # Select retrieval mode
@@ -88,17 +80,10 @@ async def retrieve_content(request: RetrieveRequest):
 
         else:
 
-            if subject:
-
-                print("MODE: Subject Knowledge Base")
-                print("Provided Subject:", subject)
-
-            else:
-
-                print("MODE: Automatic Subject Detection")
+            print("MODE: Subject Knowledge Base")
 
             data = hybrid_search(
-                subject=subject,
+                subject=request.subject,
                 question=request.question,
             )
 
@@ -126,15 +111,6 @@ async def retrieve_content(request: RetrieveRequest):
             }
         )
 
-    # ------------------------------------------------------
-    # Resolved subject
-    # ------------------------------------------------------
-
-    resolved_subject = data.get(
-        "subject",
-        subject,
-    )
-
     # ======================================================
     # IMPORTANT: Uploaded Document Has No Answer
     # ======================================================
@@ -147,7 +123,7 @@ async def retrieve_content(request: RetrieveRequest):
         )
 
         return {
-            "subject": resolved_subject,
+            "subject": request.subject,
             "question": request.question,
 
             "source": "uploaded_document",
@@ -182,7 +158,7 @@ async def retrieve_content(request: RetrieveRequest):
     # ======================================================
 
     return {
-        "subject": resolved_subject,
+        "subject": request.subject,
         "question": request.question,
 
         "source": data.get(

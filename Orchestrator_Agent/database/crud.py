@@ -9,10 +9,18 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Optional
 import bcrypt
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from database.models import User, ChatSession, ChatMessage, QuizResult, FlashcardProgress
-from database.schemas import UserCreate, ChatSessionCreate, ChatMessageCreate, QuizResultCreate, FlashcardProgressUpdate
+from database.models import (
+    User, ChatSession, ChatMessage, QuizResult,
+    FlashcardProgress, FlashcardAttempt, UploadedDocument
+)
+from database.schemas import (
+    UserCreate, ChatSessionCreate, ChatMessageCreate,
+    QuizResultCreate, FlashcardProgressUpdate,
+    FlashcardAttemptCreate, UploadedDocumentCreate
+)
 
 
 # ==========================================================
@@ -66,28 +74,71 @@ def create_user(db: Session, user: UserCreate) -> User:
     return db_user
 
 
+def get_or_create_guest_user(db: Session) -> User:
+    """Finds or creates a default guest user so unauthenticated learning activity is permanently saved in DB."""
+    guest = db.query(User).filter(User.username == "guest").first()
+    if guest:
+        return guest
+
+    guest = User(
+        username="guest",
+        email="guest@educational-ai.local",
+        hashed_password=get_password_hash("guest_pass_123456")
+    )
+    db.add(guest)
+    try:
+        db.commit()
+        db.refresh(guest)
+        return guest
+    except IntegrityError:
+        # Another request may have created the guest between the lookup and insert.
+        db.rollback()
+        guest = db.query(User).filter(User.username == "guest").first()
+        if guest:
+            return guest
+        raise
+
+
 # ==========================================================
-# Chat History CRUD
+# Chat History & Session CRUD
 # ==========================================================
 
-def get_user_sessions(db: Session, user_id: int, subject: Optional[str] = None) -> List[ChatSession]:
-    query = db.query(ChatSession).filter(ChatSession.user_id == user_id)
+def get_user_sessions(db: Session, user_id: Optional[int] = None, subject: Optional[str] = None) -> List[ChatSession]:
+    query = db.query(ChatSession)
+    if user_id is None:
+        guest = get_or_create_guest_user(db)
+        target_uid = guest.id
+    else:
+        target_uid = user_id
+    query = query.filter(ChatSession.user_id == target_uid)
     if subject:
         query = query.filter(ChatSession.subject == subject)
     return query.order_by(ChatSession.updated_at.desc()).all()
 
 
-def get_session_by_id(db: Session, session_id: str, user_id: int) -> Optional[ChatSession]:
-    return db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id
-    ).first()
+def get_session_by_id(db: Session, session_id: str, user_id: Optional[int] = None) -> Optional[ChatSession]:
+    query = db.query(ChatSession).filter(ChatSession.id == session_id)
+    if user_id is not None:
+        guest = get_or_create_guest_user(db)
+        query = query.filter((ChatSession.user_id == user_id) | (ChatSession.user_id == guest.id))
+    return query.first()
 
 
-def create_session(db: Session, session: ChatSessionCreate, user_id: int) -> ChatSession:
+def create_session(db: Session, session: ChatSessionCreate, user_id: Optional[int] = None) -> ChatSession:
+    # Check if session already exists
+    existing = db.query(ChatSession).filter(ChatSession.id == session.id).first()
+    if existing:
+        return existing
+
+    if user_id is None:
+        guest = get_or_create_guest_user(db)
+        resolved_uid = guest.id
+    else:
+        resolved_uid = user_id
+
     db_session = ChatSession(
         id=session.id,
-        user_id=user_id,
+        user_id=resolved_uid,
         subject=session.subject,
         title=session.title
     )
@@ -97,17 +148,33 @@ def create_session(db: Session, session: ChatSessionCreate, user_id: int) -> Cha
     return db_session
 
 
+
+def rename_session(db: Session, session_id: str, new_title: str, user_id: Optional[int] = None) -> Optional[ChatSession]:
+    session = get_session_by_id(db, session_id=session_id, user_id=user_id)
+    if session:
+        session.title = new_title
+        session.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(session)
+        return session
+    return None
+
+
 def create_chat_message(db: Session, message: ChatMessageCreate, session_id: str) -> ChatMessage:
     comparison_table_str = None
     if message.comparison_table is not None:
-        comparison_table_str = json.dumps(message.comparison_table)
+        if isinstance(message.comparison_table, str):
+            comparison_table_str = message.comparison_table
+        else:
+            comparison_table_str = json.dumps(message.comparison_table)
 
     db_message = ChatMessage(
         session_id=session_id,
         role=message.role,
         content=message.content,
         comparison_table=comparison_table_str,
-        code=message.code
+        code=message.code,
+        audio_url=message.audio_url
     )
     db.add(db_message)
     
@@ -121,11 +188,8 @@ def create_chat_message(db: Session, message: ChatMessageCreate, session_id: str
     return db_message
 
 
-def delete_session(db: Session, session_id: str, user_id: int) -> bool:
-    session = db.query(ChatSession).filter(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id
-    ).first()
+def delete_session(db: Session, session_id: str, user_id: Optional[int] = None) -> bool:
+    session = get_session_by_id(db, session_id=session_id, user_id=user_id)
     if session:
         db.delete(session)
         db.commit()
@@ -137,14 +201,24 @@ def delete_session(db: Session, session_id: str, user_id: int) -> bool:
 # Quiz Results CRUD
 # ==========================================================
 
-def create_quiz_result(db: Session, result: QuizResultCreate, user_id: int) -> QuizResult:
+def create_quiz_result(db: Session, result: QuizResultCreate, user_id: Optional[int] = None) -> QuizResult:
+    answers_str = None
+    if result.answers_detail is not None:
+        if isinstance(result.answers_detail, str):
+            answers_str = result.answers_detail
+        else:
+            answers_str = json.dumps(result.answers_detail)
+
+    resolved_uid = user_id if user_id is not None else get_or_create_guest_user(db).id
+
     db_result = QuizResult(
-        user_id=user_id,
+        user_id=resolved_uid,
         subject=result.subject,
         topic=result.topic,
         difficulty=result.difficulty,
         score=result.score,
-        total_questions=result.total_questions
+        total_questions=result.total_questions,
+        answers_detail=answers_str
     )
     db.add(db_result)
     db.commit()
@@ -152,8 +226,9 @@ def create_quiz_result(db: Session, result: QuizResultCreate, user_id: int) -> Q
     return db_result
 
 
-def get_user_quizzes(db: Session, user_id: int, subject: Optional[str] = None) -> List[QuizResult]:
-    query = db.query(QuizResult).filter(QuizResult.user_id == user_id)
+def get_user_quizzes(db: Session, user_id: Optional[int] = None, subject: Optional[str] = None) -> List[QuizResult]:
+    resolved_uid = user_id if user_id is not None else get_or_create_guest_user(db).id
+    query = db.query(QuizResult).filter(QuizResult.user_id == resolved_uid)
     if subject:
         query = query.filter(QuizResult.subject == subject)
     return query.order_by(QuizResult.created_at.desc()).all()
@@ -192,7 +267,6 @@ def update_flashcard_progress(db: Session, update: FlashcardProgressUpdate, user
         )
         db.add(db_progress)
 
-    # Apply algorithm based on student feedback grade
     grade = update.grade.lower()
     
     if grade == "hard":
@@ -217,7 +291,6 @@ def update_flashcard_progress(db: Session, update: FlashcardProgressUpdate, user
         else:
             db_progress.interval_days = int(db_progress.interval_days * db_progress.ease_factor * 1.2)
     else:
-        # Default fallback
         db_progress.interval_days = 1
 
     db_progress.next_review_at = datetime.utcnow() + timedelta(days=db_progress.interval_days)
@@ -232,3 +305,82 @@ def get_user_flashcard_progress(db: Session, user_id: int, subject: Optional[str
     if subject:
         query = query.filter(FlashcardProgress.subject == subject)
     return query.all()
+
+
+# ==========================================================
+# Flashcard Attempts Log CRUD
+# ==========================================================
+
+def create_flashcard_attempt(db: Session, attempt: FlashcardAttemptCreate, user_id: Optional[int] = None) -> FlashcardAttempt:
+    resolved_uid = user_id if user_id is not None else get_or_create_guest_user(db).id
+    db_attempt = FlashcardAttempt(
+        user_id=resolved_uid,
+        subject=attempt.subject,
+        topic=attempt.topic,
+        difficulty=attempt.difficulty,
+        total_cards=attempt.total_cards,
+        cards_reviewed=attempt.cards_reviewed,
+        easy_count=attempt.easy_count,
+        medium_count=attempt.medium_count,
+        hard_count=attempt.hard_count
+    )
+    db.add(db_attempt)
+    db.commit()
+    db.refresh(db_attempt)
+    return db_attempt
+
+
+def get_user_flashcard_attempts(db: Session, user_id: Optional[int] = None, subject: Optional[str] = None) -> List[FlashcardAttempt]:
+    resolved_uid = user_id if user_id is not None else get_or_create_guest_user(db).id
+    query = db.query(FlashcardAttempt).filter(FlashcardAttempt.user_id == resolved_uid)
+    if subject:
+        query = query.filter(FlashcardAttempt.subject == subject)
+    return query.order_by(FlashcardAttempt.created_at.desc()).all()
+
+
+# ==========================================================
+# Uploaded Documents CRUD
+# ==========================================================
+
+def create_uploaded_document(db: Session, doc: UploadedDocumentCreate, user_id: Optional[int] = None) -> UploadedDocument:
+    resolved_uid = user_id if user_id is not None else get_or_create_guest_user(db).id
+    db_doc = UploadedDocument(
+        user_id=resolved_uid,
+        filename=doc.filename,
+        file_type=doc.file_type,
+        file_size=doc.file_size,
+        subject=doc.subject,
+        topic=doc.topic,
+        chunks_count=doc.chunks_count,
+        status=doc.status
+    )
+    db.add(db_doc)
+    db.commit()
+    db.refresh(db_doc)
+    return db_doc
+
+
+def get_user_documents(db: Session, user_id: Optional[int] = None, subject: Optional[str] = None) -> List[UploadedDocument]:
+    resolved_uid = user_id if user_id is not None else get_or_create_guest_user(db).id
+    query = db.query(UploadedDocument).filter(UploadedDocument.user_id == resolved_uid)
+    if subject:
+        query = query.filter(UploadedDocument.subject == subject)
+    return query.order_by(UploadedDocument.created_at.desc()).all()
+
+
+
+def get_document_by_id(db: Session, doc_id: int, user_id: Optional[int] = None) -> Optional[UploadedDocument]:
+    query = db.query(UploadedDocument).filter(UploadedDocument.id == doc_id)
+    if user_id is not None:
+        query = query.filter((UploadedDocument.user_id == user_id) | (UploadedDocument.user_id.is_(None)))
+    return query.first()
+
+
+def delete_uploaded_document(db: Session, doc_id: int, user_id: Optional[int] = None) -> bool:
+    doc = get_document_by_id(db, doc_id=doc_id, user_id=user_id)
+    if doc:
+        db.delete(doc)
+        db.commit()
+        return True
+    return False
+

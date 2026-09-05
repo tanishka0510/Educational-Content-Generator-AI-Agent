@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Flashcard {
   id: number;
@@ -16,24 +16,107 @@ interface FlashcardDeck {
 }
 
 interface FlashcardsViewProps {
+  initialSubject?: string;
+  initialTopic?: string;
+  initialDifficulty?: string;
+  initialDocumentUploaded?: boolean;
+  initialNumCards?: number;
+  autoStart?: boolean;
+  onSubjectChange?: (subject: string) => void;
   onBack: () => void;
+  onAuthFailure?: () => void;
+  onRequireAuth?: (message?: string) => void;
 }
 
-export default function FlashcardsView({ onBack }: FlashcardsViewProps) {
+export default function FlashcardsView({
+  initialSubject = "",
+  initialTopic = "",
+  initialDifficulty = "medium",
+  initialDocumentUploaded = false,
+  initialNumCards = 5,
+  autoStart = false,
+  onSubjectChange,
+  onBack,
+  onAuthFailure,
+  onRequireAuth,
+}: FlashcardsViewProps) {
   // Config state
-  const [subject, setSubject] = useState("OS");
-  const [difficulty, setDifficulty] = useState("medium");
-  const [numCards, setNumCards] = useState(5);
-  const [topic, setTopic] = useState("");
-  const [documentUploaded, setDocumentUploaded] = useState(false);
+  const [subject, setSubject] = useState(initialSubject);
+  const [difficulty, setDifficulty] = useState(initialDifficulty);
+  const [numCards, setNumCards] = useState(initialNumCards);
+  const [topic, setTopic] = useState(initialTopic ?? "");
+  const [documentUploaded, setDocumentUploaded] = useState(initialDocumentUploaded);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Sync initialSubject changes from parent
+  useEffect(() => {
+    if (initialSubject) {
+      setSubject(initialSubject);
+    }
+  }, [initialSubject]);
+
+  useEffect(() => {
+    setTopic(initialTopic ?? "");
+    setDifficulty(initialDifficulty);
+    setNumCards(initialNumCards);
+    setDocumentUploaded(initialDocumentUploaded);
+  }, [initialTopic, initialDifficulty, initialNumCards, initialDocumentUploaded]);
+
+  const handleSubjectChange = (newSubject: string) => {
+    setSubject(newSubject);
+    if (onSubjectChange) {
+      onSubjectChange(newSubject);
+    }
+  };
 
   // Game state
   const [deck, setDeck] = useState<FlashcardDeck | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [completed, setCompleted] = useState(false);
+
+  // Attempt & Review tracking
+  const [reviewCounts, setReviewCounts] = useState({ easy: 0, medium: 0, hard: 0 });
+  const [deckAttempts, setDeckAttempts] = useState<
+    Array<{
+      id?: number | string;
+      topic?: string;
+      difficulty?: string;
+      easy_count?: number;
+      medium_count?: number;
+      hard_count?: number;
+      created_at?: string;
+    }>
+  >([]);
+  const [showAttempts, setShowAttempts] = useState(false);
+
+  // Guest usage tracking
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [guestCount, setGuestCount] = useState(0);
+
+  const fetchAttempts = async () => {
+    const token = localStorage.getItem("authToken");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/flashcards/attempts?subject=${subject}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setDeckAttempts(data);
+      }
+    } catch (err) {
+      console.error("Could not load flashcard attempts:", err);
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    setIsLoggedIn(!!token);
+    const count = parseInt(localStorage.getItem("guest_flashcard_count") || "0", 10);
+    setGuestCount(count);
+    fetchAttempts();
+  }, [subject]);
 
   const startRevision = async () => {
     setError("");
@@ -42,21 +125,35 @@ export default function FlashcardsView({ onBack }: FlashcardsViewProps) {
     setCurrentIndex(0);
     setIsFlipped(false);
     setCompleted(false);
+    setReviewCounts({ easy: 0, medium: 0, hard: 0 });
 
     const token = localStorage.getItem("authToken");
+
+    // Check free trial limit for unauthenticated guest users
     if (!token) {
-      setError("Please log in first.");
-      setLoading(false);
-      return;
+      const currentGuestCount = parseInt(localStorage.getItem("guest_flashcard_count") || "0", 10);
+      if (currentGuestCount >= 2) {
+        setLoading(false);
+        if (onRequireAuth) {
+          onRequireAuth("You have generated 2 free flashcard sets. Sign in or create an account to unlock unlimited flashcards, quizzes, and chat!");
+        } else {
+          setError("Free limit reached: You have generated 2 flashcard sets. Please Sign Up or Log In to continue.");
+        }
+        return;
+      }
     }
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch("http://127.0.0.1:8000/flashcards/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           subject,
           topic: topic.trim() || null,
@@ -67,51 +164,68 @@ export default function FlashcardsView({ onBack }: FlashcardsViewProps) {
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || "Failed to generate flashcards. Make sure the Content Processing Agent is on 8001.");
+        throw new Error(`Generation failed with code ${response.status}`);
       }
 
       const data = await response.json();
       setDeck(data);
+
+      // Increment guest flashcard count if unauthenticated
+      if (!token) {
+        const newCount = (parseInt(localStorage.getItem("guest_flashcard_count") || "0", 10)) + 1;
+        localStorage.setItem("guest_flashcard_count", String(newCount));
+        setGuestCount(newCount);
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Error generating flashcards.");
+        setError("Could not generate flashcards. Please try again.");
       }
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (autoStart) startRevision();
+  }, [autoStart]);
+
   const handleReview = async (grade: "easy" | "medium" | "hard") => {
     if (!deck) return;
 
     const currentCard = deck.flashcards[currentIndex];
+    const newCounts = {
+      ...reviewCounts,
+      [grade]: reviewCounts[grade] + 1,
+    };
+    setReviewCounts(newCounts);
 
     // Submit rating to spaced repetition database
     const token = localStorage.getItem("authToken");
-    if (token) {
-      try {
-        await fetch("http://127.0.0.1:8000/flashcards/submit", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            subject: deck.subject,
-            topic: deck.topic,
-            card_id: `${deck.subject}-${deck.topic || "general"}-${currentCard.id}`,
-            grade,
-          }),
-        });
-      } catch (err) {
-        console.error("Spaced repetition submit failed:", err);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("http://127.0.0.1:8000/flashcards/submit", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          subject: deck.subject,
+          topic: deck.topic,
+          card_id: `${deck.subject}-${deck.topic || "general"}-${currentCard.id}`,
+          grade,
+        }),
+      });
+      if (res.status === 401 && onAuthFailure) {
+        onAuthFailure();
+        return;
       }
+    } catch (err) {
+      console.error("Spaced repetition submit failed:", err);
     }
 
-    // Advance
+    // Advance or complete deck
     if (currentIndex + 1 < deck.flashcards.length) {
       setIsFlipped(false);
       setTimeout(() => {
@@ -119,6 +233,29 @@ export default function FlashcardsView({ onBack }: FlashcardsViewProps) {
       }, 300); // Wait for flip transition
     } else {
       setCompleted(true);
+      // Submit full deck attempt session to database
+      try {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        await fetch("http://127.0.0.1:8000/flashcards/attempt", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            subject: deck.subject,
+            topic: deck.topic || null,
+            difficulty,
+            total_cards: deck.flashcards.length,
+            cards_reviewed: deck.flashcards.length,
+            easy_count: newCounts.easy,
+            medium_count: newCounts.medium,
+            hard_count: newCounts.hard,
+          }),
+        });
+        fetchAttempts();
+      } catch (err) {
+        console.error("Failed to save flashcard attempt in DB:", err);
+      }
     }
   };
 
@@ -179,20 +316,95 @@ export default function FlashcardsView({ onBack }: FlashcardsViewProps) {
               </p>
             </div>
 
+            {/* Free Trial Banner for Guests */}
+            {!isLoggedIn && (
+              <div className="mt-4 flex items-center justify-between rounded-xl border border-sky-800/60 bg-sky-950/40 px-4 py-2.5 text-xs text-sky-300">
+                <span>Free Trial: <b>{guestCount} of 2</b> flashcard decks generated</span>
+                {onRequireAuth && (
+                  <button
+                    onClick={() => onRequireAuth("Sign up or log in to unlock unlimited flashcards, quizzes, and chat!")}
+                    className="font-medium underline hover:text-white transition"
+                  >
+                    Sign In for Unlimited →
+                  </button>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="mt-6 rounded-lg bg-rose-950/60 text-rose-400 border border-rose-800 p-4 text-sm">
-                {error}
+                <p>{error}</p>
+                {error.includes("limit") && onRequireAuth && (
+                  <button
+                    onClick={() => onRequireAuth("Sign in or create an account to unlock unlimited flashcards, quizzes, and chat!")}
+                    className="mt-3 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 transition block"
+                  >
+                    Sign In / Sign Up Now →
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Past Deck Attempts Toggle */}
+            {deckAttempts.length > 0 && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAttempts(!showAttempts)}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-2.5 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <span>🗂️</span>
+                    <span>Past Flashcard Sessions for {subject} ({deckAttempts.length})</span>
+                  </span>
+                  <span>{showAttempts ? "Hide ▲" : "View History ▼"}</span>
+                </button>
+
+                {showAttempts && (
+                  <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-2.5 text-xs">
+                    {deckAttempts.map((att, i) => {
+                      const dt = new Date(att.created_at || "").toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <div
+                          key={att.id || i}
+                          className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2 text-slate-300"
+                        >
+                          <div>
+                            <span className="font-semibold text-white">
+                              {att.topic || "General Deck"}
+                            </span>
+                            <span className="ml-2 text-[10px] uppercase text-slate-500">
+                              {att.difficulty}
+                            </span>
+                            <span className="block text-[10px] text-slate-500">{dt}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            <span className="text-emerald-400">🟢 {att.easy_count}</span>
+                            <span className="text-yellow-400">🟡 {att.medium_count}</span>
+                            <span className="text-rose-400">🔴 {att.hard_count}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
             <div className="mt-8 space-y-5">
+
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Select Subject
                 </label>
                 <select
                   value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
+                  onChange={(e) => handleSubjectChange(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-slate-500"
                 >
                   <option value="OS">Operating System</option>
@@ -386,6 +598,21 @@ export default function FlashcardsView({ onBack }: FlashcardsViewProps) {
               Spaced repetition logs have been updated.
             </p>
             
+            {!isLoggedIn && (
+              <div className="mt-6 max-w-md mx-auto rounded-xl border border-sky-800/60 bg-sky-950/40 p-4 text-xs text-sky-200 text-center">
+                <p className="font-semibold text-sky-300 text-sm">Want to track your Spaced Repetition learning?</p>
+                <p className="mt-1 text-slate-300">Sign in or create an account to remember card intervals, review weak cards, and access your Learning Progress Report.</p>
+                {onRequireAuth && (
+                  <button
+                    onClick={() => onRequireAuth("Sign in or create an account to save your spaced repetition progress and access learning reports.")}
+                    className="mt-3 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400 transition inline-block"
+                  >
+                    Sign In / Sign Up to Save Progress →
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="mt-10 flex gap-4 justify-center">
               <button
                 onClick={startRevision}

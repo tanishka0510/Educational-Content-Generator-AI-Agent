@@ -4,9 +4,11 @@ import { useState } from "react";
 
 interface AuthProps {
   onAuthSuccess: (token: string) => void;
+  customNotice?: string;
+  onCancel?: () => void;
 }
 
-export default function Auth({ onAuthSuccess }: AuthProps) {
+export default function Auth({ onAuthSuccess, customNotice, onCancel }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -41,9 +43,9 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           errMsg = errorData.detail;
         } else if (Array.isArray(errorData.detail)) {
           errMsg = errorData.detail
-            .map((err: any) => {
-              const fieldName = err.loc[err.loc.length - 1];
-              return `${fieldName}: ${err.msg}`;
+            .map((err: { loc?: (string | number)[]; msg?: string }) => {
+              const fieldName = err.loc && err.loc.length > 0 ? err.loc[err.loc.length - 1] : "field";
+              return `${fieldName}: ${err.msg || "invalid"}`;
             })
             .join(", ");
         }
@@ -75,6 +77,25 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
       <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/60 p-8 shadow-xl backdrop-blur-md">
         
+        {/* Back / Cancel button if provided */}
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mb-4 text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5"
+          >
+            ← Back to Learning
+          </button>
+        )}
+
+        {/* Custom Notice Banner for Gating/Trial Limits */}
+        {customNotice && (
+          <div className="mb-6 rounded-xl border border-sky-700/80 bg-sky-950/60 p-3.5 text-center text-xs leading-5 text-sky-200 shadow-sm">
+            <span className="font-semibold text-sky-400 mr-1.5">Free Trial Limit:</span>
+            {customNotice}
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-slate-400">
@@ -155,7 +176,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         <div className="mt-6 text-center text-sm text-slate-400">
           {isLogin ? (
             <p>
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <button
                 type="button"
                 onClick={() => {

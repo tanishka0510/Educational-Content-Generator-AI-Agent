@@ -9,7 +9,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database.connection import engine, Base
+from database.connection import engine
 from api.auth import router as auth_router
 from api.chats import router as chats_router
 from api.quizzes import router as quizzes_router
@@ -17,14 +17,6 @@ from api.flashcards import router as flashcards_router
 from api.reports import router as reports_router
 from api.voice import router as voice_router
 from api.upload import router as upload_router
-
-# ==========================================================
-# Initialize Database Tables
-# ==========================================================
-# This creates all SQLAlchemy tables in SQLite/PostgreSQL
-# automatically on startup.
-Base.metadata.create_all(bind=engine)
-
 
 # ==========================================================
 # Create FastAPI Gateway Application

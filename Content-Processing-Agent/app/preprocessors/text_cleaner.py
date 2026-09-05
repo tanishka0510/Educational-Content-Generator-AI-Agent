@@ -51,6 +51,12 @@ class TextCleaner:
         text = text.replace("\t", " ")
 
         # -----------------------------------------
+        # Remove nulls and Private Use Area glyphs (PPT bullet symbols)
+        # -----------------------------------------
+        text = text.replace("\x00", "")
+        text = re.sub(r"[\uE000-\uF8FF]", " ", text)
+
+        # -----------------------------------------
         # Remove multiple spaces
         # -----------------------------------------
         text = re.sub(r"[ ]{2,}", " ", text)

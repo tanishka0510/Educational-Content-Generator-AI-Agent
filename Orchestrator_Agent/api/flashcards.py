@@ -11,10 +11,16 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from database.connection import get_db
-from database.crud import update_flashcard_progress, get_user_flashcard_progress
-from database.schemas import FlashcardProgressUpdate, FlashcardProgressResponse
+from database.crud import (
+    update_flashcard_progress, get_user_flashcard_progress,
+    create_flashcard_attempt, get_user_flashcard_attempts
+)
+from database.schemas import (
+    FlashcardProgressUpdate, FlashcardProgressResponse,
+    FlashcardAttemptCreate, FlashcardAttemptResponse
+)
 from database.models import User
-from utils.security import get_current_user
+from utils.security import get_current_user, get_optional_user
 
 router = APIRouter(prefix="/flashcards", tags=["Flashcards"])
 
@@ -36,11 +42,11 @@ class FlashcardGenerateGatewayRequest(BaseModel):
 @router.post("/generate")
 def generate_flashcards_endpoint(
     req: FlashcardGenerateGatewayRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Requests the Educational Agent to generate flashcards.
-    Requires user to be authenticated.
+    Allows guest users up to trial limit, as well as authenticated users.
     """
     url = f"{EDUCATIONAL_AGENT_URL}/flashcards/generate"
     payload = {
@@ -71,23 +77,52 @@ def generate_flashcards_endpoint(
 @router.post("/submit", response_model=FlashcardProgressResponse)
 def submit_flashcard_progress(
     update: FlashcardProgressUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
     Updates the spaced repetition progress for a specific flashcard.
     Grading Options: 'easy', 'medium', 'hard'.
     """
-    return update_flashcard_progress(db=db, update=update, user_id=current_user.id)
+    user_id = current_user.id if current_user else 1
+    return update_flashcard_progress(db=db, update=update, user_id=user_id)
 
 
 @router.get("/history", response_model=List[FlashcardProgressResponse])
 def get_flashcards_history(
     subject: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
-    Retrieves the review status of flashcards for the authenticated user.
+    Retrieves the review status of flashcards for the user.
     """
-    return get_user_flashcard_progress(db=db, user_id=current_user.id, subject=subject)
+    user_id = current_user.id if current_user else 1
+    return get_user_flashcard_progress(db=db, user_id=user_id, subject=subject)
+
+
+@router.post("/attempt", response_model=FlashcardAttemptResponse)
+def record_flashcard_attempt_endpoint(
+    attempt: FlashcardAttemptCreate,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Records a completed flashcard deck review session in the database.
+    """
+    user_id = current_user.id if current_user else None
+    return create_flashcard_attempt(db=db, attempt=attempt, user_id=user_id)
+
+
+@router.get("/attempts", response_model=List[FlashcardAttemptResponse])
+def get_flashcard_attempts_endpoint(
+    subject: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves all flashcard deck attempt sessions for the user.
+    """
+    user_id = current_user.id if current_user else None
+    return get_user_flashcard_attempts(db=db, user_id=user_id, subject=subject)
+

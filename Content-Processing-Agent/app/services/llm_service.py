@@ -111,16 +111,57 @@ def _is_quota_error(error: Exception) -> bool:
     )
 
 
+class GroqResponseMock:
+    def __init__(self, text: str):
+        self.text = text
+
+
 # ==========================================================
 # Central Gemini Request
 # ==========================================================
 
 def _generate_content(prompt: str):
     """
-    Send one generation request to Gemini.
+    Send one generation request to Gemini or Groq.
 
-    All Gemini calls go through this function.
+    All LLM calls go through this function.
     """
+
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if groq_api_key:
+        print("\n========== GROQ REQUEST ==========")
+        print("Model: groq/compound")
+        print("==================================\n")
+        
+        # Truncate prompt if it is too large to prevent 413 Payload Too Large on Groq Free Tier
+        # We keep the first 20,000 chars (context) and last 5,000 chars (rules/instructions)
+        safe_prompt = prompt
+        if len(prompt) > 25000:
+            print(f"Truncating prompt from {len(prompt)} to 25000 characters for Groq safety.")
+            safe_prompt = prompt[:20000] + "\n\n[Context truncated due to size limits]\n\n" + prompt[-5000:]
+
+        try:
+            import requests
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "groq/compound",
+                "messages": [{"role": "user", "content": safe_prompt}],
+                "temperature": 0.2,
+            }
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            response.raise_for_status()
+            text = response.json()["choices"][0]["message"]["content"]
+            return GroqResponseMock(text)
+        except Exception as error:
+            print("Groq API error, falling back to Gemini:", error)
 
     model = _get_model()
 

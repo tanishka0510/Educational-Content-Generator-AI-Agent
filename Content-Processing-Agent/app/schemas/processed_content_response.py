@@ -44,6 +44,8 @@ class ComparisonTableResponse(BaseModel):
 
 class ProcessedContentResponse(BaseModel):
 
+    subject: Optional[str] = None
+
     summary: str
 
     code: Optional[str] = None

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import ComparisonTable from "./ComparisonTable";
 
 interface ComparisonTableData {
@@ -8,21 +9,179 @@ interface ComparisonTableData {
 }
 
 interface ChatMessageData {
+  id?: string;
   role: "user" | "assistant";
-  content: string;
+  content?: string;
   code?: string;
   comparison_table?: ComparisonTableData;
   audio_url?: string;
+  topic?: string;
+  difficulty?: string;
+  unit?: string;
+  subject?: string;
+  intent?: string;
+  image_url?: string | null;
+  generated_image?: string;
+  is_voice_response?: boolean;
 }
 
 interface ChatMessageProps {
   message: ChatMessageData;
+  currentSubject?: string;
+  onGenerateQuiz?: (subject: string, topic?: string, difficulty?: string, documentUploaded?: boolean) => void;
+  onGenerateFlashcards?: (subject: string, topic?: string, difficulty?: string, documentUploaded?: boolean) => void;
+  onGenerateVoice?: (text: string) => void | Promise<string>;
+  onGenerateImage?: (prompt: string, subject: string, messageId?: string) => void | Promise<string>;
+  documentUploaded?: boolean;
 }
+
+let activePlayback: { stop: () => void } | null = null;
 
 export default function ChatMessage({
   message,
+  currentSubject = "",
+  onGenerateQuiz = () => undefined,
+  onGenerateFlashcards = () => undefined,
+  onGenerateVoice = () => undefined,
+  onGenerateImage = () => undefined,
+  documentUploaded = false,
 }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const [voiceState, setVoiceState] = useState<"idle" | "playing" | "paused">("idle");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const cleanupAudioRef = useRef<(() => void) | null>(null);
+  const [imageGenerating, setImageGenerating] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  const stopAudio = (resetPosition = true) => {
+    cleanupAudioRef.current?.();
+    cleanupAudioRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      if (resetPosition) audioRef.current.currentTime = 0;
+    }
+    audioRef.current = null;
+    setVoiceState("idle");
+    if (activePlayback?.stop === stopAudio) activePlayback = null;
+  };
+
+  const startAudioPlayback = (audioUrl: string) => {
+    activePlayback?.stop();
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    const handlePlay = () => setVoiceState("playing");
+    const handlePause = () => setVoiceState("paused");
+    const handleEnded = () => stopAudio(false);
+    const handleError = () => {
+      setVoiceError("Unable to play this audio.");
+      stopAudio();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && !audio.paused) audio.pause();
+    };
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    cleanupAudioRef.current = () => {
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+    activePlayback = { stop: stopAudio };
+    audio.play().catch(() => {
+      setVoiceError("Unable to play this audio.");
+      stopAudio();
+    });
+  };
+
+  useEffect(() => {
+    if (!isUser && message.is_voice_response && message.audio_url) {
+      startAudioPlayback(message.audio_url);
+    }
+    return () => stopAudio();
+  }, [message.id, message.is_voice_response, message.audio_url]);
+
+  const handleGenerateVoice = () => {
+    if (isUser || !message.content) return;
+    setVoiceError(null);
+    if (voiceState === "playing") {
+      audioRef.current?.pause();
+      return;
+    }
+    if (voiceState === "paused") {
+      audioRef.current?.play().catch(() => {
+        setVoiceError("Unable to play this audio.");
+        stopAudio();
+      });
+      return;
+    }
+    if (message.audio_url) {
+      startAudioPlayback(message.audio_url);
+      return;
+    }
+    Promise.resolve(onGenerateVoice(message.content))
+      .then((audioUrl) => {
+        if (!audioUrl) throw new Error("No audio URL was returned.");
+        startAudioPlayback(audioUrl);
+      })
+      .catch((err: unknown) => {
+        setVoiceError(err instanceof Error ? err.message : "Unable to generate audio.");
+      });
+  };
+
+  const handleGenerateImage = () => {
+    if (isUser || !message.content) return;
+    setImageGenerating(true);
+    setImageError(null);
+    const prompt = `Educational diagram explaining: ${message.content.substring(0, 200)}. Clean, labeled, textbook style.`;
+    Promise.resolve(onGenerateImage(prompt, currentSubject, message.id))
+      .catch((err: unknown) => {
+        setImageError(err instanceof Error ? err.message : "Image generation failed.");
+      })
+      .finally(() => setImageGenerating(false));
+  };
+
+  const handleDownloadImage = async (imageUrl: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error();
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = "educational-image.png";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      setImageError("Unable to download the generated image.");
+    }
+  };
+
+  const handleGenerateQuiz = () => {
+    if (!isUser) {
+      const messageSubject = message.subject?.trim() || currentSubject.trim();
+      onGenerateQuiz(
+        messageSubject.toUpperCase() === "UNKNOWN" ? "" : messageSubject,
+        message.topic,
+        message.difficulty,
+        documentUploaded,
+      );
+    }
+  };
+
+  const handleGenerateFlashcards = () => {
+    if (!isUser) onGenerateFlashcards(currentSubject, message.topic, message.difficulty, documentUploaded);
+  };
+
+  const generatedImage = message.image_url || message.generated_image;
 
   return (
     <div
@@ -44,20 +203,21 @@ export default function ChatMessage({
           </div>
         )}
 
-        {/* Play voice button */}
-        {!isUser && message.audio_url && (
-          <div className="mt-3 flex justify-start">
-            <button
-              onClick={() => {
-                const audio = new Audio(message.audio_url);
-                audio.play().catch((err) => console.log("Audio play error:", err));
-              }}
-              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition"
-            >
-              🔊 Play Audio Summary
-            </button>
+        {!isUser && generatedImage && (
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-700">
+            <div className="border-b border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-400">Generated Image</div>
+            <img src={generatedImage} alt="Educational illustration" className="max-h-96 w-full bg-slate-950 object-contain p-2" />
+            <div className="border-t border-slate-700 bg-slate-900 px-3 py-2">
+              <button type="button" onClick={() => handleDownloadImage(generatedImage)} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white">
+                Download Image
+              </button>
+            </div>
           </div>
         )}
+
+        {!isUser && imageError && <p className="mt-3 text-sm text-rose-400">{imageError}</p>}
+
+        {!isUser && voiceError && <p className="mt-3 text-sm text-rose-400">{voiceError}</p>}
 
         {/* Code */}
         {!isUser && message.code && (
@@ -80,6 +240,23 @@ export default function ChatMessage({
             <ComparisonTable
               table={message.comparison_table}
             />
+          </div>
+        )}
+
+        {!isUser && message.intent !== "out_of_scope" && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={handleGenerateQuiz} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" title="Generate a quiz from this topic">
+              📝 Quiz
+            </button>
+            <button type="button" onClick={handleGenerateFlashcards} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-purple-500 bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50" title="Generate flashcards from this topic">
+              🎴 Flashcards
+            </button>
+            <button type="button" onClick={handleGenerateVoice} disabled={imageGenerating} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50" title="Listen to this response">
+              {voiceState === "playing" ? "⏸ Playing" : voiceState === "paused" ? "▶️ Paused" : "🔊 Listen"}
+            </button>
+            <button type="button" onClick={handleGenerateImage} disabled={voiceState === "playing" || imageGenerating} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50" title="Generate educational diagram">
+              {imageGenerating ? "⏳ Generating..." : "🖼️ Image"}
+            </button>
           </div>
         )}
       </div>

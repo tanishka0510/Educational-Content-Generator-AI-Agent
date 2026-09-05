@@ -76,10 +76,10 @@ async def upload_document(
             selected_subject=subject,
         )
 
-    except ValueError as e:
+    except HTTPException:
+        raise
 
-        # This is where your subject-validation error
-        # should be converted into a user-friendly response.
+    except ValueError as e:
 
         raise HTTPException(
             status_code=400,
@@ -92,7 +92,7 @@ async def upload_document(
 
         raise HTTPException(
             status_code=500,
-            detail="Could not process the uploaded document."
+            detail=f"Could not process the uploaded document: {str(e)}"
         )
 
     # =====================================================

@@ -39,6 +39,9 @@ class AgentState(TypedDict, total=False):
     session_id: str
     conversation_id: str
     timestamp: str
+    subject: Optional[str]
+    subject_hint: Optional[str]
+    document_uploaded: bool
 
     # ======================================================
     # User Input

@@ -9,22 +9,24 @@ import FlashcardsView from "@/components/FlashcardsView";
 
 type Section = "home" | "chat" | "quiz" | "flashcards" | "dashboard" | "auth";
 
-type Subject =
-  | "OS"
-  | "OOP"
-  | "DBMS"
-  | "CNS"
-  | "SE"
-  | "AI"
-  | "ETC"
-  | "COA"
-  | "DATA STRUCTURE";
+interface QuizFlashcardInitProps {
+  launchOrigin?: "home" | "chat";
+  initialSubject?: string;
+  initialTopic?: string;
+  initialDifficulty?: string;
+  initialDocumentUploaded?: boolean;
+  initialNumQuestions?: number;
+  initialNumCards?: number;
+  autoStart?: boolean;
+}
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<Section>("home");
-  const [subject, setSubject] = useState<Subject>("OS");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [redirectTarget, setRedirectTarget] = useState<Section | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [quizInitProps, setQuizInitProps] = useState<QuizFlashcardInitProps>({});
+  const [flashcardsInitProps, setFlashcardsInitProps] = useState<QuizFlashcardInitProps>({});
 
   // Check login state on mount
   useEffect(() => {
@@ -40,24 +42,49 @@ export default function Home() {
     setActiveSection("home");
   };
 
+  const handleAuthFailure = () => {
+    localStorage.removeItem("authToken");
+    setIsLoggedIn(false);
+    setRedirectTarget(activeSection);
+    setAuthNotice("Session expired or unauthorized. Please sign in again.");
+    setActiveSection("auth");
+  };
+
+  const handleRequireAuth = (target: Section, notice?: string) => {
+    setRedirectTarget(target);
+    setAuthNotice(notice || "Please sign in or create an account to unlock unlimited access.");
+    setActiveSection("auth");
+  };
+
   const navigateToSection = (target: Section) => {
-    if (target === "home" || target === "chat") {
+    // Chat, Quiz, and Flashcards are accessible directly for guests up to free trial limits
+    if (target === "home" || target === "chat" || target === "quiz" || target === "flashcards") {
       setActiveSection(target);
       return;
     }
 
-    // Auth gating for other sections
+    // Auth gating for Performance Dashboard
     if (!isLoggedIn) {
       setRedirectTarget(target);
+      setAuthNotice("Please sign in or create an account to access your Performance Dashboard.");
       setActiveSection("auth");
     } else {
       setActiveSection(target);
     }
   };
 
-  const openChat = (selectedSubject: Subject) => {
-    setSubject(selectedSubject);
+  const openChat = () => {
     setActiveSection("chat");
+  };
+
+  const openQuiz = (props: QuizFlashcardInitProps = {}) => {
+    setQuizInitProps({ launchOrigin: "home", ...props });
+    setActiveSection("quiz");
+  };
+
+  const openFlashcards = (props: QuizFlashcardInitProps = {}) => {
+    setFlashcardsInitProps({ launchOrigin: "home", ...props });
+    setActiveSection("flashcards");
   };
 
   // =====================================================
@@ -66,10 +93,17 @@ export default function Home() {
   if (activeSection === "auth") {
     return (
       <Auth
+        customNotice={authNotice || undefined}
+        onCancel={() => {
+          setActiveSection(redirectTarget || "home");
+          setRedirectTarget(null);
+          setAuthNotice(null);
+        }}
         onAuthSuccess={() => {
           setIsLoggedIn(true);
           setActiveSection(redirectTarget || "home");
           setRedirectTarget(null);
+          setAuthNotice(null);
         }}
       />
     );
@@ -79,21 +113,51 @@ export default function Home() {
   // Dashboard Analytics
   // =====================================================
   if (activeSection === "dashboard") {
-    return <Dashboard onBack={() => setActiveSection("home")} />;
+    return <Dashboard onBack={() => setActiveSection("home")} onAuthFailure={handleAuthFailure} />;
   }
 
   // =====================================================
   // Quiz
   // =====================================================
   if (activeSection === "quiz") {
-    return <QuizView onBack={() => setActiveSection("home")} />;
+    return (
+      <QuizView
+        initialSubject={quizInitProps.initialSubject || ""}
+        initialTopic={quizInitProps.initialTopic}
+        initialDifficulty={quizInitProps.initialDifficulty}
+        initialDocumentUploaded={quizInitProps.initialDocumentUploaded}
+        initialNumQuestions={quizInitProps.initialNumQuestions}
+        autoStart={quizInitProps.autoStart}
+        onBack={() => {
+          setActiveSection(quizInitProps.launchOrigin === "chat" ? "chat" : "home");
+          setQuizInitProps({});
+        }}
+        onAuthFailure={handleAuthFailure}
+        onRequireAuth={(msg) => handleRequireAuth("quiz", msg)}
+      />
+    );
   }
 
   // =====================================================
   // Flashcards
   // =====================================================
   if (activeSection === "flashcards") {
-    return <FlashcardsView onBack={() => setActiveSection("home")} />;
+    return (
+      <FlashcardsView
+        initialSubject={flashcardsInitProps.initialSubject || ""}
+        initialTopic={flashcardsInitProps.initialTopic}
+        initialDifficulty={flashcardsInitProps.initialDifficulty}
+        initialDocumentUploaded={flashcardsInitProps.initialDocumentUploaded}
+        initialNumCards={flashcardsInitProps.initialNumCards}
+        autoStart={flashcardsInitProps.autoStart}
+        onBack={() => {
+          setActiveSection(flashcardsInitProps.launchOrigin === "chat" ? "chat" : "home");
+          setFlashcardsInitProps({});
+        }}
+        onAuthFailure={handleAuthFailure}
+        onRequireAuth={(msg) => handleRequireAuth("flashcards", msg)}
+      />
+    );
   }
 
   // =====================================================
@@ -102,8 +166,11 @@ export default function Home() {
   if (activeSection === "chat") {
     return (
       <ChatPage
-        subject={subject}
         onBack={() => setActiveSection("home")}
+        onAuthFailure={handleAuthFailure}
+        onRequireAuth={(msg) => handleRequireAuth("chat", msg)}
+        onOpenQuiz={openQuiz}
+        onOpenFlashcards={openFlashcards}
       />
     );
   }
@@ -116,32 +183,32 @@ export default function Home() {
       
       {/* Top Navigation Bar */}
       <nav className="absolute top-0 right-0 p-6 flex justify-end items-center gap-4">
-        {isLoggedIn ? (
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setActiveSection("dashboard")}
-              className="text-sm font-medium text-slate-350 hover:text-white transition"
-            >
-              📊 Performance Dashboard
-            </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigateToSection("dashboard")}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium hover:bg-slate-800 transition"
+          >
+            📊 Performance Dashboard
+          </button>
+          {isLoggedIn ? (
             <button
               onClick={handleLogout}
               className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium hover:bg-slate-800 transition"
             >
               Log Out
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => {
-              setRedirectTarget("home");
-              setActiveSection("auth");
-            }}
-            className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-200 transition"
-          >
-            Sign In
-          </button>
-        )}
+          ) : (
+            <button
+              onClick={() => {
+                setRedirectTarget("home");
+                setActiveSection("auth");
+              }}
+              className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-200 transition"
+            >
+              Sign In
+            </button>
+          )}
+        </div>
       </nav>
 
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-16">
@@ -160,34 +227,12 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Subject Selection dropdown */}
-        <div className="mt-10">
-          <label className="mb-2 block text-center text-sm text-slate-400">
-            Select Subject
-          </label>
-          <select
-            value={subject}
-            onChange={(event) => setSubject(event.target.value as Subject)}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-white outline-none focus:border-slate-500"
-          >
-            <option value="OS">Operating System</option>
-            <option value="OOP">Object Oriented Programming</option>
-            <option value="CNS">Cryptography and Network Security</option>
-            <option value="DBMS">Database Management System</option>
-            <option value="SE">Software Engineering</option>
-            <option value="AI">Artificial Intelligence</option>
-            <option value="ETC">Effective Technical Communication</option>
-            <option value="COA">Computer Organization and Architecture</option>
-            <option value="DATA STRUCTURE">Data Structure</option>
-          </select>
-        </div>
-
         {/* Main Options Grid */}
         <div className="mt-14 grid w-full max-w-4xl gap-6 md:grid-cols-3">
           
           {/* Card 1: CHAT */}
           <button
-            onClick={() => openChat(subject)}
+            onClick={openChat}
             className="group rounded-2xl border border-slate-800 bg-slate-900 p-8 text-left transition hover:-translate-y-1 hover:border-slate-600 hover:bg-slate-800"
           >
             <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 text-2xl">

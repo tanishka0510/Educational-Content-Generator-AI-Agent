@@ -418,28 +418,11 @@ def retrieve_quiz_context(
             "Searching subject knowledge base..."
         )
 
-        try:
-
-            documents, score = search_knowledge(
-                subject=subject,
-                query=retrieval_query,
-                k=8,
-            )
-
-        except FileNotFoundError:
-
-            print(
-                f"\nSubject database for '{subject}' not found."
-            )
-
-            print(
-                "Continuing with LLM-only quiz generation."
-            )
-
-            documents = []
-            score = None
-            context = ""
-            source = "llm"
+        documents, score = search_knowledge(
+            subject=subject,
+            query=retrieval_query,
+            k=8,
+        )
 
         print(
             "Retrieved Documents :",

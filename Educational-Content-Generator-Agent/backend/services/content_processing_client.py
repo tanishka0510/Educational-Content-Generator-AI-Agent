@@ -118,20 +118,11 @@ def process_content(
     subject: str | None,
     question: str,
     document_uploaded: bool = False,
+    filename: str | None = None,
 ):
     """
     Process a question/request through the complete
     Content Processing Agent pipeline.
-
-    This function calls /process-content/.
-
-    The Content Processing Agent is responsible for:
-
-        1. Selecting the appropriate retrieval source.
-        2. Searching the uploaded document or subject KB.
-        3. Deciding whether external search is required.
-        4. Generating the educational content.
-        5. Returning the final processed response.
 
     Parameters
     ----------
@@ -143,6 +134,9 @@ def process_content(
 
     document_uploaded : bool
         True when the user has uploaded a document.
+
+    filename : str | None
+        Specific uploaded document name if known.
 
     Returns
     -------
@@ -157,6 +151,8 @@ def process_content(
         "subject": subject,
         "question": question,
         "document_uploaded": document_uploaded,
+        "filename": filename,
+        "document_name": filename,
     }
 
     try:

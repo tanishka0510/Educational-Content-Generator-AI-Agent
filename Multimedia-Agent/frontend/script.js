@@ -1,5 +1,5 @@
-const API_BASE = "http://127.0.0.1:8000/multimedia";
-const OUTPUT_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://127.0.0.1:8003/multimedia";
+const OUTPUT_BASE = "http://127.0.0.1:8003";
 
 const content = document.getElementById("content");
 const question = document.getElementById("question");

@@ -1,13 +1,20 @@
 """
 Text-To-Speech Service
 
-Converts educational text into speech using gTTS.
+Converts educational text into speech using Microsoft Edge Neural TTS.
 """
 
+import asyncio
+import os
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
-from gtts import gTTS
+import edge_tts
+
+EDGE_TTS_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-AriaNeural")
+FALLBACK_TTS_VOICE = "en-US-JennyNeural"
+MULTIMEDIA_PUBLIC_URL = os.getenv("MULTIMEDIA_PUBLIC_URL", "http://127.0.0.1:8003")
 
 
 class TextToSpeechService:
@@ -29,7 +36,7 @@ class TextToSpeechService:
         Returns:
             dict:
             {
-                "audio_path": "...",
+                "audio_url": "...",
                 "message": "..."
             }
         """
@@ -41,16 +48,21 @@ class TextToSpeechService:
 
         audio_path = self.output_dir / filename
 
-        tts = gTTS(
-            text=text,
-            lang="en",
-            slow=False
-        )
-
-        tts.save(audio_path)
+        file_descriptor, temporary_path = tempfile.mkstemp(suffix=".mp3")
+        os.close(file_descriptor)
+        try:
+            try:
+                asyncio.run(edge_tts.Communicate(text, EDGE_TTS_VOICE).save(temporary_path))
+            except Exception:
+                asyncio.run(edge_tts.Communicate(text, FALLBACK_TTS_VOICE).save(temporary_path))
+            Path(temporary_path).replace(audio_path)
+        finally:
+            temporary_file = Path(temporary_path)
+            if temporary_file.exists():
+                temporary_file.unlink()
 
         return {
-            "audio_path": str(audio_path),
+            "audio_url": f"{MULTIMEDIA_PUBLIC_URL}/outputs/audio/{filename}",
             "message": "Audio generated successfully."
         }
 

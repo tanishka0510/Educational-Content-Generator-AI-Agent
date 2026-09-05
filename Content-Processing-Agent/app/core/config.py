@@ -14,7 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 class Settings(BaseSettings):
@@ -84,6 +84,7 @@ class Settings(BaseSettings):
         ".pdf",
         ".docx",
         ".pptx",
+        ".ppt",
         ".txt",
         ".md",
     )
