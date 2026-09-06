@@ -5,26 +5,41 @@ This file creates the FastAPI application
 and registers all API routes.
 """
 
+print("Loading FastAPI...", flush=True)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.quiz import router as quiz_router
-from app.api.upload import router as upload_router
-from app.api.retrieve import router as retrieve_router
-from app.api.search import router as search_router
 
+print("Loading API routers...", flush=True)
+from app.api.quiz import router as quiz_router
+print("quiz router loaded", flush=True)
+
+from app.api.upload import router as upload_router
+print("upload router loaded", flush=True)
+
+from app.api.retrieve import router as retrieve_router
+print("retrieve router loaded", flush=True)
+
+from app.api.search import router as search_router
+print("search router loaded", flush=True)
+
+print("Loading settings...", flush=True)
 from app.core.config import settings
-import os
+
+print("Loading schemas...", flush=True)
 from app.schemas.query_schema import QueryRequest
 from app.schemas.query_response import QueryResponse
 from app.schemas.processed_content_response import (
     ProcessedContentResponse
 )
 
+print("Loading RAG service...", flush=True)
 from app.services.rag_service import (
     ask_question,
     process_question,
 )
+print("RAG service loaded", flush=True)
 
+print("Loading subject validator...", flush=True)
 from app.services.subject_validator import (
     validate_question_subject,
     detect_question_subject,
