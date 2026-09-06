@@ -5,20 +5,27 @@ This file creates the FastAPI application
 and registers all API routes.
 """
 
+import os
+
 print("Loading FastAPI...", flush=True)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 print("Loading API routers...", flush=True)
+
+print("Loading quiz router...", flush=True)
 from app.api.quiz import router as quiz_router
 print("quiz router loaded", flush=True)
 
+print("Loading upload router...", flush=True)
 from app.api.upload import router as upload_router
 print("upload router loaded", flush=True)
 
+print("Loading retrieve router...", flush=True)
 from app.api.retrieve import router as retrieve_router
 print("retrieve router loaded", flush=True)
 
+print("Loading search router...", flush=True)
 from app.api.search import router as search_router
 print("search router loaded", flush=True)
 
