@@ -4,9 +4,7 @@ Search API
 Performs semantic search on indexed documents.
 """
 
-from fastapi import APIRouter, HTTPException,Query
-
-from app.services.retrieval_service import RetrievalService
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(
     prefix="/search",
@@ -49,6 +47,7 @@ async def search_documents(
             detail="Query cannot be empty."
         )
 
+    from app.services.retrieval_service import RetrievalService
     results = RetrievalService.search(
         query=query,
         top_k=top_k
