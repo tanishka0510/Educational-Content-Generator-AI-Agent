@@ -36,11 +36,26 @@ from app.database.uploaded_chroma_client import UploadedChromaClient
 # Embedding Model
 # ==========================================================
 
-embeddings = HuggingFaceEmbeddings(
-    model_name=settings.EMBEDDING_MODEL
-)
+# ==========================================================
+# Embedding Model
+# ==========================================================
+
+_embeddings = None
 
 
+def get_embeddings():
+    global _embeddings
+
+    if _embeddings is None:
+        print("Loading Hugging Face embedding model...", flush=True)
+
+        _embeddings = HuggingFaceEmbeddings(
+            model_name=settings.EMBEDDING_MODEL
+        )
+
+        print("Hugging Face embedding model loaded.", flush=True)
+
+    return _embeddings
 # ==========================================================
 # Directories
 # ==========================================================
@@ -321,7 +336,7 @@ def load_subject_database(subject: str):
 
     vectordb = Chroma(
         persist_directory=str(subject_db),
-        embedding_function=embeddings,
+        embedding_function=get_embeddings(),
     )
 
     print(
@@ -584,9 +599,7 @@ def search_uploaded_document(
     # Create query embedding
     # ------------------------------------------------------
 
-    query_embedding = embeddings.embed_query(
-        query
-    )
+    query_embedding = get_embeddings().embed_query(query)
 
     # ------------------------------------------------------
     # Chroma semantic search (with filename filter if provided)

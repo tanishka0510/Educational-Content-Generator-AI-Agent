@@ -28,10 +28,26 @@ print("Chroma Root    :", CHROMA_ROOT)
 # Embedding Model
 # ==========================================================
 
-embeddings = HuggingFaceEmbeddings(
-    model_name=settings.EMBEDDING_MODEL
-)
+# ==========================================================
+# Embedding Model
+# ==========================================================
 
+_embeddings = None
+
+
+def get_embeddings():
+    global _embeddings
+
+    if _embeddings is None:
+        print("Loading Hugging Face embedding model...", flush=True)
+
+        _embeddings = HuggingFaceEmbeddings(
+            model_name=settings.EMBEDDING_MODEL
+        )
+
+        print("Hugging Face embedding model loaded.", flush=True)
+
+    return _embeddings
 # ==========================================================
 # Text Splitter
 # ==========================================================
@@ -74,7 +90,7 @@ def build_subject_database(subject_folder: Path):
 
     vectordb = Chroma.from_documents(
         documents=chunks,
-        embedding=embeddings,
+        embedding=get_embeddings(),
         persist_directory=str(subject_db)
     )
 
