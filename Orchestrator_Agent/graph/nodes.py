@@ -30,7 +30,8 @@ EDUCATIONAL_AGENT_URL = os.getenv(
 MULTIMEDIA_AGENT_URL = os.getenv(
     "MULTIMEDIA_AGENT_URL",
     "http://localhost:8003"
-)TIMEOUT = 60.0
+)
+TIMEOUT = 60.0
 
 
 def route_request_node(state: AgentState) -> Dict[str, Any]:
