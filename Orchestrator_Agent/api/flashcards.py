@@ -23,8 +23,11 @@ from database.models import User
 from utils.security import get_current_user, get_optional_user
 
 router = APIRouter(prefix="/flashcards", tags=["Flashcards"])
-
-EDUCATIONAL_AGENT_URL = "http://localhost:8002"
+import os
+EDUCATIONAL_AGENT_URL = os.getenv(
+    "EDUCATIONAL_AGENT_URL",
+    "http://localhost:8002"
+)
 TIMEOUT = 60.0
 
 

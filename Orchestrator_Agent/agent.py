@@ -16,7 +16,12 @@ from schemas.request import OrchestratorRequest, SessionInfo, UserInput, Request
 from services.state_manager import StateManager
 
 
-CONTENT_PROCESSING_URL = "http://localhost:8001"
+import os
+
+CONTENT_PROCESSING_URL = os.getenv(
+    "CONTENT_PROCESSING_URL",
+    "http://localhost:8001"
+)
 EDUCATIONAL_INTENTS = {
     "assignment",
     "compare",

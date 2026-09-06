@@ -17,9 +17,16 @@ from database.models import User
 from utils.security import get_current_user, get_optional_user
 
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
+import os
+EDUCATIONAL_AGENT_URL = os.getenv(
+    "EDUCATIONAL_AGENT_URL",
+    "http://localhost:8002"
+)
 
-EDUCATIONAL_AGENT_URL = "http://localhost:8002"
-CONTENT_PROCESSING_URL = "http://localhost:8001"
+CONTENT_PROCESSING_URL = os.getenv(
+    "CONTENT_PROCESSING_URL",
+    "http://localhost:8001"
+)
 TIMEOUT = 60.0
 
 

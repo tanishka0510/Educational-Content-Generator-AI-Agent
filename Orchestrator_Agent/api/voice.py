@@ -19,7 +19,10 @@ from api.chats import get_optional_user, process_content_endpoint, ProcessConten
 
 router = APIRouter(prefix="/voice", tags=["Voice Q&A"])
 
-MULTIMEDIA_AGENT_URL = "http://localhost:8003"
+MULTIMEDIA_AGENT_URL = os.getenv(
+    "MULTIMEDIA_AGENT_URL",
+    "http://localhost:8003"
+)
 TIMEOUT = 60.0
 
 

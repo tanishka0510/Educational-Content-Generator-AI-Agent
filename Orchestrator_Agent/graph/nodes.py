@@ -15,12 +15,22 @@ from utils.logger import get_logger
 from schemas.request import OrchestratorRequest, SessionInfo, UserInput, RequestMetadata
 
 logger = get_logger(__name__)
-
+import os
 # Agent ports mapping
-CONTENT_PROCESSING_URL = "http://localhost:8001"
-EDUCATIONAL_AGENT_URL = "http://localhost:8002"
-MULTIMEDIA_AGENT_URL = "http://localhost:8003"
-TIMEOUT = 60.0
+CONTENT_PROCESSING_URL = os.getenv(
+    "CONTENT_PROCESSING_URL",
+    "http://localhost:8001"
+)
+
+EDUCATIONAL_AGENT_URL = os.getenv(
+    "EDUCATIONAL_AGENT_URL",
+    "http://localhost:8002"
+)
+
+MULTIMEDIA_AGENT_URL = os.getenv(
+    "MULTIMEDIA_AGENT_URL",
+    "http://localhost:8003"
+)TIMEOUT = 60.0
 
 
 def route_request_node(state: AgentState) -> Dict[str, Any]:

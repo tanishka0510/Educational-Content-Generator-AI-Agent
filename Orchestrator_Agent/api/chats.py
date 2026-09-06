@@ -22,6 +22,13 @@ from database.schemas import (
     ChatSessionCreate, ChatSessionUpdate
 )
 
+import os
+MULTIMEDIA_AGENT_URL = os.getenv(
+    "MULTIMEDIA_AGENT_URL",
+    "http://localhost:8003"
+)
+
+
 from database.models import User
 from utils.security import get_current_user, SECRET_KEY, ALGORITHM
 from agent import run_orchestrator
@@ -131,7 +138,7 @@ def process_content_endpoint(
     if not audio_url and audio_path:
         from pathlib import Path
         filename = Path(audio_path).name
-        audio_url = f"http://localhost:8003/outputs/audio/{filename}"
+        audio_url = f"{MULTIMEDIA_AGENT_URL}/outputs/audio/{filename}"
 
     client_response = {
         "answer": edu_output.get("answer") or edu_output.get("summary") or processed_content.get("summary") or "Unable to generate an answer.",
