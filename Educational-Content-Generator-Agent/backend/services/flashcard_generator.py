@@ -4,7 +4,7 @@ Flashcard Generator Service
 Project: Educational Content Generator AI
 Module: Educational Agent
 """
-
+import os
 import json
 import re
 import requests
@@ -14,7 +14,10 @@ from services.gemini_service import ask_gemini
 from prompts.flashcard_prompt import create_flashcard_prompt
 
 # Config to point to Content Processing Agent on port 8001
-CONTENT_PROCESSING_AGENT_URL = "http://127.0.0.1:8001"
+CONTENT_PROCESSING_AGENT_URL = os.getenv(
+    "CONTENT_PROCESSING_AGENT_URL",
+    "http://127.0.0.1:8001"
+)
 RETRIEVAL_ENDPOINT = f"{CONTENT_PROCESSING_AGENT_URL}/quiz/retrieve"
 
 

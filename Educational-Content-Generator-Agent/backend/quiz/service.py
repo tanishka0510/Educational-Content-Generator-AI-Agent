@@ -1,3 +1,4 @@
+import os
 import json
 import re
 import requests
@@ -15,7 +16,8 @@ from prompts.quiz_prompt import create_quiz_prompt
 # CONTENT PROCESSING AGENT
 # ============================================================
 
-CONTENT_PROCESSING_AGENT_URL = (
+CONTENT_PROCESSING_AGENT_URL = os.getenv(
+    "CONTENT_PROCESSING_AGENT_URL",
     "http://127.0.0.1:8001"
 )
 

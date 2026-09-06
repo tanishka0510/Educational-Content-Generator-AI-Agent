@@ -2,11 +2,14 @@
 Main entry point for the Multimedia Agent Backend.
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.api.multimedia import router as multimedia_router
+
 
 # --------------------------------------------------
 # Create FastAPI Application
@@ -18,17 +21,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
 # --------------------------------------------------
 # Enable CORS
 # --------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # Change this in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # --------------------------------------------------
 # Serve Generated Files
@@ -40,11 +45,13 @@ app.mount(
     name="outputs"
 )
 
+
 # --------------------------------------------------
 # Register API Routes
 # --------------------------------------------------
 
 app.include_router(multimedia_router)
+
 
 # --------------------------------------------------
 # Root Endpoint
@@ -53,7 +60,7 @@ app.include_router(multimedia_router)
 @app.get("/")
 def root():
     return {
-        "message": "Educational AI Multimedia Agent is running 🚀"
+        "message": "Educational AI Multimedia Agent is running!"
     }
 
 
@@ -79,8 +86,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "backend.main:app",
-        host="127.0.0.1",
-        port=8003,
-        reload=True
+        app,
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8003"))
     )

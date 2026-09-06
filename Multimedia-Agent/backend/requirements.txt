@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+langchain-core
+langchain-groq
+groq
+google-genai
+requests
+edge-tts

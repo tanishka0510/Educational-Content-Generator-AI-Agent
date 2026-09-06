@@ -20,14 +20,17 @@ This client provides two levels of communication:
        -> Educational content generation
 """
 
+import os
 import httpx
-
 
 # ==========================================================
 # Configuration
 # ==========================================================
 
-CONTENT_PROCESSING_AGENT_URL = "http://127.0.0.1:8001"
+CONTENT_PROCESSING_AGENT_URL = os.getenv(
+    "CONTENT_PROCESSING_AGENT_URL",
+    "http://127.0.0.1:8001"
+)
 REQUEST_TIMEOUT = 60.0
 
 
