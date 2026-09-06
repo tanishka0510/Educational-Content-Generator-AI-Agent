@@ -7,8 +7,6 @@ from typing import Optional
 
 from app.models.document import Document
 from app.services.storage_service import StorageService
-from app.services.processing_service import ProcessingService
-
 
 router = APIRouter(
     prefix="/upload",
@@ -21,6 +19,8 @@ async def upload_document(
     subject: Optional[str] = Form(default=None),
     file: UploadFile = File(...)
 ):
+    from app.services.processing_service import ProcessingService
+    
     """
     Upload and process a document for the selected subject.
     Subject is optional (defaults to GENERAL) to support Chat document uploads without subject selection.
