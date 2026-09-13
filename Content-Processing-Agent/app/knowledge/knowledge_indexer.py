@@ -28,10 +28,6 @@ print("Chroma Root    :", CHROMA_ROOT)
 # Embedding Model
 # ==========================================================
 
-# ==========================================================
-# Embedding Model
-# ==========================================================
-
 _embeddings = None
 
 
@@ -48,6 +44,7 @@ def get_embeddings():
         print("Hugging Face embedding model loaded.", flush=True)
 
     return _embeddings
+
 # ==========================================================
 # Text Splitter
 # ==========================================================

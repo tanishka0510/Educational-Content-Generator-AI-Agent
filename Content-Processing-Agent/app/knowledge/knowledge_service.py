@@ -32,9 +32,6 @@ from app.core.config import settings
 from app.database.uploaded_chroma_client import UploadedChromaClient
 
 
-# ==========================================================
-# Embedding Model
-# ==========================================================
 
 # ==========================================================
 # Embedding Model
@@ -56,6 +53,7 @@ def get_embeddings():
         print("Hugging Face embedding model loaded.", flush=True)
 
     return _embeddings
+
 # ==========================================================
 # Directories
 # ==========================================================
@@ -598,9 +596,7 @@ def search_uploaded_document(
     # ------------------------------------------------------
     # Create query embedding
     # ------------------------------------------------------
-
     query_embedding = get_embeddings().embed_query(query)
-
     # ------------------------------------------------------
     # Chroma semantic search (with filename filter if provided)
     # ------------------------------------------------------

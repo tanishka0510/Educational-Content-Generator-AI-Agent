@@ -14,10 +14,6 @@ CHROMA_ROOT = BASE_DIR / "chroma_db"
 # Embedding Model (load once)
 # ==========================================================
 
-# ==========================================================
-# Embedding Model
-# ==========================================================
-
 _embeddings = None
 
 
@@ -34,7 +30,6 @@ def get_embeddings():
         print("Hugging Face embedding model loaded.", flush=True)
 
     return _embeddings
-
 # ==========================================================
 # Cache loaded vector stores
 # ==========================================================
@@ -64,6 +59,25 @@ def get_vectorstore(subject: str):
         raise FileNotFoundError(
             f"Subject database not found: {subject}"
         )
+
+    # Load the embedding model only when the vector store
+    # is actually requested.
+    embeddings = None
+
+
+    def get_embeddings():
+        global embeddings
+
+        if embeddings is None:
+            print("Loading Hugging Face embedding model...", flush=True)
+
+            embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+
+            print("Hugging Face embedding model loaded.", flush=True)
+
+        return embeddings
 
     vectordb = Chroma(
         persist_directory=str(subject_path),

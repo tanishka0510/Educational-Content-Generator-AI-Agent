@@ -4,15 +4,12 @@ Main Entry Point
 This file creates the FastAPI application
 and registers all API routes.
 """
-
 import os
-
 print("Loading FastAPI...", flush=True)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 print("Loading API routers...", flush=True)
-
 print("Loading quiz router...", flush=True)
 from app.api.quiz import router as quiz_router
 print("quiz router loaded", flush=True)
@@ -26,6 +23,7 @@ from app.api.retrieve import router as retrieve_router
 print("retrieve router loaded", flush=True)
 
 print("Loading search router...", flush=True)
+
 from app.api.search import router as search_router
 print("search router loaded", flush=True)
 
@@ -52,6 +50,7 @@ from app.services.subject_validator import (
     detect_question_subject,
     get_subject_validation_message,
 )
+print("Subject validator loaded", flush=True)
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
     "http://localhost:3000"
