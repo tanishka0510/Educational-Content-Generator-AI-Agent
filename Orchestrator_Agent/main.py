@@ -5,15 +5,37 @@ Project: Educational Content Generator AI
 Module: Orchestrator Agent (Gateway)
 """
 
+import os
 import uvicorn
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
 from database.connection import engine, Base
 from database import models
 
-# Create all database tables if they do not already exist
+# ==========================================================
+# Initialize Database Tables
+# ==========================================================
+
+# Importing models ensures all SQLAlchemy models are registered
+# with Base.metadata before creating the tables.
+#
+# This creates missing tables such as:
+# users
+# chat_sessions
+# chat_messages
+# quiz_results
+# flashcard_progress
+# flashcard_attempts
+# uploaded_documents
+#
+# Existing tables are not deleted or recreated.
 Base.metadata.create_all(bind=engine)
+
+
 from api.auth import router as auth_router
 from api.chats import router as chats_router
 from api.quizzes import router as quizzes_router
@@ -22,17 +44,27 @@ from api.reports import router as reports_router
 from api.voice import router as voice_router
 from api.upload import router as upload_router
 
+
+# ==========================================================
+# Frontend URL
+# ==========================================================
+
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
-    "http://localhost:3000"
+    "https://educational-frontend.onrender.com"
 ).rstrip("/")
+
 
 # ==========================================================
 # Create FastAPI Gateway Application
 # ==========================================================
+
 app = FastAPI(
     title="Educational AI Platform Orchestrator Gateway",
-    description="Central Orchestrator, Gateway API Router and Authentication Manager.",
+    description=(
+        "Central Orchestrator, Gateway API Router "
+        "and Authentication Manager."
+    ),
     version="1.0.0"
 )
 
@@ -40,6 +72,7 @@ app = FastAPI(
 # ==========================================================
 # CORS Configuration
 # ==========================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -53,9 +86,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ==========================================================
 # Register API Routers
 # ==========================================================
+
 app.include_router(auth_router)
 app.include_router(chats_router)
 app.include_router(upload_router)
@@ -68,23 +103,31 @@ app.include_router(voice_router)
 # ==========================================================
 # Detailed Validation Exception Handler
 # ==========================================================
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
+
     print("\n========== REQUEST VALIDATION ERROR ==========")
     print(f"Path: {request.url.path}")
     print(f"Errors: {exc.errors()}")
     print("==============================================\n")
+
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "message": "Request validation failed."}
+        content={
+            "detail": exc.errors(),
+            "message": "Request validation failed."
+        }
     )
 
 
+# ==========================================================
+# Gateway Root Endpoint
+# ==========================================================
+
 @app.get("/")
 def gateway_root():
+
     return {
         "message": "Welcome to Educational AI Agent Gateway!",
         "status": "online",
@@ -93,11 +136,11 @@ def gateway_root():
 
 
 # ==========================================================
-# Run application server
+# Run Application Server
 # ==========================================================
 
-
 if __name__ == "__main__":
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
