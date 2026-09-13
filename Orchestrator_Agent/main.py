@@ -9,7 +9,11 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from database.connection import engine
+from database.connection import engine, Base
+from database import models
+
+# Create all database tables if they do not already exist
+Base.metadata.create_all(bind=engine)
 from api.auth import router as auth_router
 from api.chats import router as chats_router
 from api.quizzes import router as quizzes_router
