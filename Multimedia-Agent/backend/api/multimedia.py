@@ -95,6 +95,7 @@ def text_to_speech(request: TextToSpeechRequest):
 
         return AudioResponse(
             audio_url=result["audio_url"],
+            audio_path=result.get("audio_path"),
             message=result["message"]
         )
 

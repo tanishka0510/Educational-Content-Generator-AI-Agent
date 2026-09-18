@@ -66,9 +66,11 @@ export default function ChatMessage({
     if (activePlayback?.stop === stopAudio) activePlayback = null;
   };
 
-  const startAudioPlayback = (audioUrl: string) => {
+  const startAudioPlayback = (audioUrl: string, opts?: { silentAutoplayFailure?: boolean }) => {
+    setVoiceError(null);
     activePlayback?.stop();
     const audio = new Audio(audioUrl);
+    audio.preload = "auto";
     audioRef.current = audio;
 
     const handlePlay = () => setVoiceState("playing");
@@ -95,15 +97,26 @@ export default function ChatMessage({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
     activePlayback = { stop: stopAudio };
-    audio.play().catch(() => {
+    audio.play().catch((err: unknown) => {
+      // Browsers block autoplay with sound when the transient user
+      // activation (Voice Stop click) has expired while STT/LLM/TTS
+      // were running. That is not a broken audio file, so do not
+      // surface it as "Unable to play" — leave the Listen button
+      // for an explicit user gesture, which the browser allows.
+      const errorName = err instanceof DOMException ? err.name : err instanceof Error ? err.name : "";
+      if (opts?.silentAutoplayFailure && (errorName === "NotAllowedError" || errorName === "AbortError")) {
+        stopAudio();
+        return;
+      }
       setVoiceError("Unable to play this audio.");
       stopAudio();
     });
   };
 
   useEffect(() => {
+    setVoiceError(null);
     if (!isUser && message.is_voice_response && message.audio_url) {
-      startAudioPlayback(message.audio_url);
+      startAudioPlayback(message.audio_url, { silentAutoplayFailure: true });
     }
     return () => stopAudio();
   }, [message.id, message.is_voice_response, message.audio_url]);

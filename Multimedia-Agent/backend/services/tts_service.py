@@ -141,6 +141,15 @@ class TextToSpeechService:
                 temporary_file.unlink()
 
         # -------------------------------------------------
+        # Verify the generated file exists and is non-empty.
+        # An empty file would produce an unplayable <audio>
+        # element on the frontend ("Unable to play audio").
+        # -------------------------------------------------
+
+        if not audio_path.exists() or audio_path.stat().st_size == 0:
+            raise RuntimeError("TTS generation produced an empty audio file.")
+
+        # -------------------------------------------------
         # Create public audio URL
         # -------------------------------------------------
 
@@ -151,10 +160,16 @@ class TextToSpeechService:
 
         # -------------------------------------------------
         # Return result
+        #
+        # audio_path is included so orchestrator/frontend
+        # clients can rebuild a browser-reachable URL from
+        # the filename even when the public base URL differs
+        # (e.g. localhost vs deployed host).
         # -------------------------------------------------
 
         return {
             "audio_url": audio_url,
+            "audio_path": f"outputs/audio/{filename}",
             "message": "Audio generated successfully."
         }
 

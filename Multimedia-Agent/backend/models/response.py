@@ -32,6 +32,11 @@ class AudioResponse(BaseModel):
         description="URL to generated audio file."
     )
 
+    audio_path: Optional[str] = Field(
+        default=None,
+        description="Relative path/filename of the generated audio file (lets callers rebuild a browser-reachable URL)."
+    )
+
     message: str = "Audio generated successfully."
 
 

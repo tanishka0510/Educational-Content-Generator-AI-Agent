@@ -99,36 +99,44 @@ async def voice_qa(
         
         # If the orchestrator generated a TTS path, we extract it.
         # Otherwise, we call TTS explicitly.
-        audio_url = None
+        # A TTS failure must not fail the whole voice request:
+        # the transcript + text answer are still returned with
+        # audio_url=None so the UI can fall back gracefully.
         audio_url = chat_response.get("audio_url")
         audio_path_raw = chat_response.get("audio_path")
 
         if not audio_url and not audio_path_raw:
             # Explicitly call TTS
             tts_url = f"{MULTIMEDIA_AGENT_URL}/multimedia/tts"
-            async with httpx.AsyncClient() as client:
-                tts_response = await client.post(
-                    tts_url, 
-                    json={"text": chat_response["answer"]}, 
-                    timeout=TIMEOUT
-                )
-                if tts_response.status_code == 200:
-                    tts_data = tts_response.json()
-                    audio_url = tts_data.get("audio_url")
-                    audio_path_raw = tts_data.get("audio_path")
-                    
+            try:
+                async with httpx.AsyncClient() as client:
+                    tts_response = await client.post(
+                        tts_url,
+                        json={"text": chat_response["answer"]},
+                        timeout=TIMEOUT
+                    )
+                    if tts_response.status_code == 200:
+                        tts_data = tts_response.json()
+                        audio_url = tts_data.get("audio_url")
+                        audio_path_raw = tts_data.get("audio_path")
+            except Exception:
+                # Keep audio_url as None; answer is still usable.
+                pass
+
         if not audio_url and audio_path_raw:
             # Construct accessible URL link
             # Multimedia static server maps backend/outputs -> /outputs
             filename = Path(audio_path_raw).name
-            audio_url = f"{MULTIMEDIA_AGENT_URL}/outputs/audio/{filename}"
-            
+            if filename:
+                audio_url = f"{MULTIMEDIA_AGENT_URL}/outputs/audio/{filename}"
+
         # Return merged voice responses
         return {
             "transcript": transcript,
             "answer": chat_response["answer"],
             "session_id": chat_response["session_id"],
             "audio_url": audio_url,
+            "audio_path": audio_path_raw,
             "subject": chat_response.get("subject"),
             "comparison_table": chat_response.get("comparison_table"),
             "code": chat_response.get("code"),

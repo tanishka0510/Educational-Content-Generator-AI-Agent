@@ -115,6 +115,35 @@ const MULTIMEDIA_URL =
   process.env.NEXT_PUBLIC_MULTIMEDIA_URL || "http://127.0.0.1:8003";
 
 // =====================================================
+// Resolve a browser-playable audio URL from a backend
+// voice/TTS response.
+//
+// The backend may return:
+// - audio_url: absolute URL built with the server-side
+//   MULTIMEDIA_PUBLIC_URL / MULTIMEDIA_AGENT_URL, or
+// - audio_path: relative path or filename (e.g.
+//   "outputs/audio/<id>.mp3").
+//
+// Prefer rebuilding from the filename against the
+// frontend-configured MULTIMEDIA_URL so playback works
+// even when the backend's absolute URL uses a host the
+// browser cannot reach (localhost vs 127.0.0.1 vs
+// deployed host). Falls back to the raw audio_url.
+// =====================================================
+
+function resolveAudioUrl(data: { audio_url?: string | null; audio_path?: string | null }): string | undefined {
+  const rawUrl = data.audio_url || undefined;
+  const rawPath = data.audio_path || undefined;
+  const source = rawUrl || rawPath;
+  if (!source) return undefined;
+  const filename = source.split(/[\\/]/).pop();
+  if (filename && /\.(mp3|wav|ogg|m4a|webm)$/i.test(filename)) {
+    return `${MULTIMEDIA_URL}/outputs/audio/${filename}`;
+  }
+  return rawUrl;
+}
+
+// =====================================================
 // Subject Names
 // =====================================================
 
@@ -826,18 +855,20 @@ export default function ChatPage({
         content: `🎤 ${data.transcript}`,
       };
 
+      const resolvedAudioUrl = resolveAudioUrl(data);
+
       const assistantMsg: Message = {
         id: generateMessageId(),
         role: "assistant",
         content: data.answer,
-        audio_url: data.audio_url,
+        audio_url: resolvedAudioUrl,
         comparison_table: data.comparison_table,
         code: data.code,
         topic: data.topic,
         difficulty: data.difficulty,
         subject: data.subject,
         intent: data.intent,
-        is_voice_response: Boolean(data.audio_url),
+        is_voice_response: Boolean(resolvedAudioUrl),
       };
 
       const finalMessages = [...messages, finalUserMsg, assistantMsg];
@@ -976,7 +1007,7 @@ export default function ChatPage({
         content: data.answer || data.summary || "I could not generate an answer.",
         code: data.code,
         comparison_table: data.comparison_table,
-        audio_url: data.audio_url,
+        audio_url: resolveAudioUrl(data),
         topic: data.topic,
         intent: data.intent,
         difficulty: data.difficulty,
