@@ -78,6 +78,7 @@ app.add_middleware(
     allow_origins=[
         FRONTEND_URL,
         "https://educational-frontend.onrender.com",
+        "https://educational-frontend-2uii.onrender.com",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
